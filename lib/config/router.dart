@@ -23,6 +23,8 @@ import '../screens/safety_tools/pin_setup_screen.dart';
 import '../screens/safety_tools/camouflage_screen.dart';
 import '../screens/safety_tools/walking_buddy_setup.dart';
 import '../screens/safety_tools/walking_buddy_active_view.dart';
+import '../screens/safety_tools/walk_with_me_setup_screen.dart';
+import '../screens/safety_tools/walk_with_me_active_screen.dart';
 import '../screens/profile/volunteer_verification_screen.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -193,6 +195,14 @@ final GoRouter appRouter = GoRouter(
         }
         return WalkingBuddyActiveView(sessionId: sessionId);
       },
+    ),
+    GoRoute(
+      path: '/walk-with-me-setup',
+      builder: (context, state) => const WalkWithMeSetupScreen(),
+    ),
+    GoRoute(
+      path: '/walk-with-me-active',
+      builder: (context, state) => const WalkWithMeActiveScreen(),
     ),
   ],
 );
