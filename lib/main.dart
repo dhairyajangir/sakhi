@@ -26,22 +26,6 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // ── Local Emulator (only in debug builds) ────────────────────────────
-    // To use emulators, uncomment the block below and run:
-    //   firebase emulators:start
-    // For physical devices, pass your LAN IP:
-    //   flutter run --dart-define=EMULATOR_HOST=192.168.x.x
-    //
-    // if (kDebugMode) {
-    //   const String host = String.fromEnvironment(
-    //     'EMULATOR_HOST',
-    //     defaultValue: kIsWeb ? 'localhost' : '10.0.2.2',
-    //   );
-    //   await FirebaseAuth.instance.useAuthEmulator(host, 9099);
-    //   FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
-    // }
-    // ─────────────────────────────────────────────────────────────────────
-
     // Initialize push notifications
     await NotificationService.instance.initialize();
 
