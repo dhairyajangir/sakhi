@@ -2,10 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/constants.dart';
 import '../models/walking_session_model.dart';
-
-/// Firestore collection name for walking buddy sessions.
-const String kWalkingSessionsCollection = 'walking_sessions';
 
 /// Service that manages all Firestore state transitions for the Walking Buddy
 /// feature. Follows the singleton pattern consistent with the rest of the app.
@@ -17,7 +15,7 @@ class WalkingBuddyService {
   final _uuid = const Uuid();
 
   CollectionReference<Map<String, dynamic>> get _col =>
-      _db.collection(kWalkingSessionsCollection);
+      _db.collection(AppConstants.walkingSessionsCollection);
 
   // ─────────────────────────────────────────────────────────────────────
   // CREATE
@@ -129,18 +127,28 @@ class WalkingBuddyService {
   // ─────────────────────────────────────────────────────────────────────
 
   /// Volunteer clicks "Accept" — status → volunteerAccepted.
+  /// Uses a transaction to prevent two volunteers from accepting simultaneously.
   Future<void> volunteerAccept({
     required String sessionId,
     required String volunteerId,
     required String volunteerName,
     String? volunteerPhone,
   }) async {
-    await _col.doc(sessionId).update({
-      'status': WalkingSessionStatus.volunteerAccepted.name,
-      'volunteerId': volunteerId,
-      'volunteerName': volunteerName,
-      'volunteerPhone': volunteerPhone,
-      'lastUpdate': FieldValue.serverTimestamp(),
+    final docRef = _col.doc(sessionId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      if (!snap.exists) throw Exception('Session not found');
+      final status = snap.data()?['status'] as String?;
+      if (status != WalkingSessionStatus.searching.name) {
+        throw Exception('Session is no longer searching (current: $status)');
+      }
+      tx.update(docRef, {
+        'status': WalkingSessionStatus.volunteerAccepted.name,
+        'volunteerId': volunteerId,
+        'volunteerName': volunteerName,
+        'volunteerPhone': volunteerPhone,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      });
     });
     debugPrint('[WalkingBuddyService] Volunteer $volunteerId accepted $sessionId');
   }
@@ -159,52 +167,60 @@ class WalkingBuddyService {
   // ─────────────────────────────────────────────────────────────────────
 
   /// Volunteer swipes "I have reached the user."
+  /// Uses a transaction for atomic read-modify-write.
   Future<void> volunteerConfirmsArrival(String sessionId) async {
-    final doc = await _col.doc(sessionId).get();
-    final data = doc.data();
-    if (data == null) return;
+    final docRef = _col.doc(sessionId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      final data = snap.data();
+      if (data == null) return;
 
-    final userAlsoConfirmed =
-        data['volunteerReachedConfirmedByUser'] as bool? ?? false;
+      final userAlsoConfirmed =
+          data['volunteerReachedConfirmedByUser'] as bool? ?? false;
 
-    final updates = <String, dynamic>{
-      'volunteerReachedConfirmedByVolunteer': true,
-      'lastUpdate': FieldValue.serverTimestamp(),
-    };
+      final updates = <String, dynamic>{
+        'volunteerReachedConfirmedByVolunteer': true,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      };
 
-    // If BOTH have confirmed → inProgress
-    if (userAlsoConfirmed) {
-      updates['status'] = WalkingSessionStatus.inProgress.name;
-    } else {
-      updates['status'] = WalkingSessionStatus.volunteerReached.name;
-    }
+      // If BOTH have confirmed → inProgress
+      if (userAlsoConfirmed) {
+        updates['status'] = WalkingSessionStatus.inProgress.name;
+      } else {
+        updates['status'] = WalkingSessionStatus.volunteerReached.name;
+      }
 
-    await _col.doc(sessionId).update(updates);
+      tx.update(docRef, updates);
+    });
     debugPrint('[WalkingBuddyService] Volunteer confirms arrival: $sessionId');
   }
 
   /// User swipes "Volunteer has arrived."
+  /// Uses a transaction for atomic read-modify-write.
   Future<void> userConfirmsVolunteerArrival(String sessionId) async {
-    final doc = await _col.doc(sessionId).get();
-    final data = doc.data();
-    if (data == null) return;
+    final docRef = _col.doc(sessionId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      final data = snap.data();
+      if (data == null) return;
 
-    final volunteerAlsoConfirmed =
-        data['volunteerReachedConfirmedByVolunteer'] as bool? ?? false;
+      final volunteerAlsoConfirmed =
+          data['volunteerReachedConfirmedByVolunteer'] as bool? ?? false;
 
-    final updates = <String, dynamic>{
-      'volunteerReachedConfirmedByUser': true,
-      'lastUpdate': FieldValue.serverTimestamp(),
-    };
+      final updates = <String, dynamic>{
+        'volunteerReachedConfirmedByUser': true,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      };
 
-    // If BOTH have confirmed → inProgress
-    if (volunteerAlsoConfirmed) {
-      updates['status'] = WalkingSessionStatus.inProgress.name;
-    } else {
-      updates['status'] = WalkingSessionStatus.volunteerReached.name;
-    }
+      // If BOTH have confirmed → inProgress
+      if (volunteerAlsoConfirmed) {
+        updates['status'] = WalkingSessionStatus.inProgress.name;
+      } else {
+        updates['status'] = WalkingSessionStatus.volunteerReached.name;
+      }
 
-    await _col.doc(sessionId).update(updates);
+      tx.update(docRef, updates);
+    });
     debugPrint('[WalkingBuddyService] User confirms volunteer arrival: $sessionId');
   }
 
@@ -213,46 +229,54 @@ class WalkingBuddyService {
   // ─────────────────────────────────────────────────────────────────────
 
   /// User swipes "Reached Destination."
+  /// Uses a transaction for atomic read-modify-write.
   Future<void> userConfirmsDestination(String sessionId) async {
-    final doc = await _col.doc(sessionId).get();
-    final data = doc.data();
-    if (data == null) return;
+    final docRef = _col.doc(sessionId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      final data = snap.data();
+      if (data == null) return;
 
-    final volunteerAlso =
-        data['destinationReachedConfirmedByVolunteer'] as bool? ?? false;
+      final volunteerAlso =
+          data['destinationReachedConfirmedByVolunteer'] as bool? ?? false;
 
-    final updates = <String, dynamic>{
-      'destinationReachedConfirmedByUser': true,
-      'lastUpdate': FieldValue.serverTimestamp(),
-    };
+      final updates = <String, dynamic>{
+        'destinationReachedConfirmedByUser': true,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      };
 
-    if (volunteerAlso) {
-      updates['status'] = WalkingSessionStatus.completed.name;
-    }
+      if (volunteerAlso) {
+        updates['status'] = WalkingSessionStatus.completed.name;
+      }
 
-    await _col.doc(sessionId).update(updates);
+      tx.update(docRef, updates);
+    });
     debugPrint('[WalkingBuddyService] User confirms destination: $sessionId');
   }
 
   /// Volunteer swipes "Reached Destination."
+  /// Uses a transaction for atomic read-modify-write.
   Future<void> volunteerConfirmsDestination(String sessionId) async {
-    final doc = await _col.doc(sessionId).get();
-    final data = doc.data();
-    if (data == null) return;
+    final docRef = _col.doc(sessionId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      final data = snap.data();
+      if (data == null) return;
 
-    final userAlso =
-        data['destinationReachedConfirmedByUser'] as bool? ?? false;
+      final userAlso =
+          data['destinationReachedConfirmedByUser'] as bool? ?? false;
 
-    final updates = <String, dynamic>{
-      'destinationReachedConfirmedByVolunteer': true,
-      'lastUpdate': FieldValue.serverTimestamp(),
-    };
+      final updates = <String, dynamic>{
+        'destinationReachedConfirmedByVolunteer': true,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      };
 
-    if (userAlso) {
-      updates['status'] = WalkingSessionStatus.completed.name;
-    }
+      if (userAlso) {
+        updates['status'] = WalkingSessionStatus.completed.name;
+      }
 
-    await _col.doc(sessionId).update(updates);
+      tx.update(docRef, updates);
+    });
     debugPrint('[WalkingBuddyService] Volunteer confirms destination: $sessionId');
   }
 
@@ -283,10 +307,20 @@ class WalkingBuddyService {
   // ─────────────────────────────────────────────────────────────────────
 
   /// Cancel a walking session.
+  /// Uses a transaction to guard against cancelling completed sessions.
   Future<void> cancelSession(String sessionId) async {
-    await _col.doc(sessionId).update({
-      'status': WalkingSessionStatus.cancelled.name,
-      'lastUpdate': FieldValue.serverTimestamp(),
+    final docRef = _col.doc(sessionId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      final status = snap.data()?['status'] as String?;
+      if (status == WalkingSessionStatus.completed.name ||
+          status == WalkingSessionStatus.cancelled.name) {
+        return; // already terminal — no-op
+      }
+      tx.update(docRef, {
+        'status': WalkingSessionStatus.cancelled.name,
+        'lastUpdate': FieldValue.serverTimestamp(),
+      });
     });
     debugPrint('[WalkingBuddyService] Session cancelled: $sessionId');
   }
