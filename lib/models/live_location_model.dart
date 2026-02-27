@@ -80,7 +80,7 @@ class LiveLocationModel {
       isActive: json['isActive'] as bool? ?? true,
       trackingReason: _parseReason(json['trackingReason'] as String?),
       sessionId: json['sessionId'] as String?,
-      batteryLevel: json['batteryLevel'] as int?,
+      batteryLevel: (json['batteryLevel'] as num?)?.toInt(),
     );
   }
 
