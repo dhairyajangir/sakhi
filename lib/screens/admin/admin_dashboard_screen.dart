@@ -299,6 +299,36 @@ class _GodModeMapTabState extends ConsumerState<_GodModeMapTab> {
               title: 'SOS (session)',
               snippet: 'Session $safeId',
             ),
+            onTap: () {
+              setState(() => _selectedTracker = null);
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Row(
+                    children: [
+                      Icon(Icons.warning_rounded, color: SakhiTheme.danger),
+                      SizedBox(width: 8),
+                      Text('SOS Session'),
+                    ],
+                  ),
+                  content: Text(
+                    'Session ID: $safeId\u2026\n'
+                    'Location: '
+                    '${s.userLocation!.latitude.toStringAsFixed(4)}, '
+                    '${s.userLocation!.longitude.toStringAsFixed(4)}',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       }
