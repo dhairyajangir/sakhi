@@ -25,6 +25,11 @@ class AppConstants {
   static const String broadcastsCollection = 'broadcasts';
   static const String locationSharesCollection = 'locationShares';
   static const String liveLocationsCollection = 'liveLocations';
+  static const String walkingSessionsCollection = 'walking_sessions';
+
+  // ── Google Maps / Places API Key ──
+  // Replace with your actual key or load from environment
+  static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
 
   // ── Live Tracking Settings ──
   static const int liveTrackingIntervalSec = 10;
