@@ -10,6 +10,7 @@ import 'config/constants.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'services/hardware_trigger_service.dart';
+import 'services/walk_with_me_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,11 @@ void main() async {
     // (void) and sets up an internal stream listener. It handles its own
     // errors internally and does not need to block Firebase readiness.
     HardwareTriggerService.instance.initialize();
+
+    // Prepare the Walk-with-Me background service (does NOT auto-start).
+    if (!kIsWeb) {
+      await WalkWithMeService.instance.initialize();
+    }
 
     firebaseReady = true;
   } catch (e, st) {
