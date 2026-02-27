@@ -1,7 +1,7 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import 'platform_stub.dart' if (dart.library.io) 'platform_io.dart';
 
 /// Service that manages the System Alert Window overlay for displaying an SOS
 /// button on top of other apps (e.g., Google Maps during navigation).
@@ -22,7 +22,7 @@ class SosOverlayService {
 
   /// Check & request the `SYSTEM_ALERT_WINDOW` permission (Android only).
   Future<bool> requestOverlayPermission() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (kIsWeb || !isAndroidPlatform) return false;
     try {
       final result = await _channel.invokeMethod<bool>('requestPermission');
       return result ?? false;
@@ -37,7 +37,7 @@ class SosOverlayService {
 
   /// Check if the overlay permission is already granted.
   Future<bool> hasOverlayPermission() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (kIsWeb || !isAndroidPlatform) return false;
     try {
       final result = await _channel.invokeMethod<bool>('hasPermission');
       return result ?? false;
@@ -48,7 +48,7 @@ class SosOverlayService {
 
   /// Show the floating SOS button overlay.
   Future<void> showOverlay() async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb || !isAndroidPlatform) return;
     if (_isShowing) return;
     try {
       await _channel.invokeMethod('showOverlay');
@@ -64,7 +64,7 @@ class SosOverlayService {
 
   /// Hide the floating SOS button overlay.
   Future<void> hideOverlay() async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb || !isAndroidPlatform) return;
     if (!_isShowing) return;
     try {
       await _channel.invokeMethod('hideOverlay');
@@ -87,8 +87,8 @@ class SosOverlayService {
   }
 
   /// Clean up method channel handler.
-  void dispose() {
+  Future<void> dispose() async {
     _channel.setMethodCallHandler(null);
-    if (_isShowing) hideOverlay();
+    if (_isShowing) await hideOverlay();
   }
 }
