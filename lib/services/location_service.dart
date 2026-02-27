@@ -311,4 +311,73 @@ class LocationService {
     return Geolocator.distanceBetween(startLat, startLng, endLat, endLng) /
         1000;
   }
+
+  // ───────── Walking Buddy High-Accuracy Tracking ─────────
+
+  StreamSubscription<Position>? _walkingBuddySub;
+  bool _isWalkingBuddyTracking = false;
+  bool get isWalkingBuddyTracking => _isWalkingBuddyTracking;
+
+  /// Start high-accuracy location updates specifically for Walking Buddy
+  /// sessions. Uses a shorter distance filter and interval for real-time
+  /// meetup & journey tracking.
+  void startWalkingBuddyTracking({
+    required void Function(Position position) onUpdate,
+  }) {
+    _walkingBuddySub?.cancel();
+    _isWalkingBuddyTracking = true;
+
+    const distFilter = 5; // 5m – tighter than regular tracking
+    const intervalSec = 5; // 5s – more frequent updates
+
+    LocationSettings locationSettings;
+
+    if (kIsWeb) {
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distFilter,
+      );
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distFilter,
+        intervalDuration: const Duration(seconds: intervalSec),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: 'Walking Buddy session is active',
+          notificationTitle: 'SAKHI Walking Buddy',
+          enableWakeLock: true,
+        ),
+      );
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distFilter,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        activityType: ActivityType.fitness,
+      );
+    } else {
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: distFilter,
+      );
+    }
+
+    _walkingBuddySub = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen(
+      onUpdate,
+      onError: (e) =>
+          debugPrint('[LocationService] Walking buddy stream error: $e'),
+    );
+  }
+
+  /// Stop Walking Buddy location tracking.
+  void stopWalkingBuddyTracking() {
+    _walkingBuddySub?.cancel();
+    _walkingBuddySub = null;
+    _isWalkingBuddyTracking = false;
+    debugPrint('[LocationService] Walking buddy tracking stopped');
+  }
 }
