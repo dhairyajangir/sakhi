@@ -97,5 +97,57 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin();
     }
+
+    // ── Helper: Check if a volunteer is KYC-verified ──
+    function isVerifiedVolunteer() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verificationStatus == 'verified';
+    }
+
+    // ── Walking Sessions Collection ──
+    match /walking_sessions/{sessionId} {
+      // Both the user and the assigned volunteer can read the session.
+      // Admins have full read access.
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.uid == resource.data.volunteerId ||
+        isAdmin()
+      );
+
+      // Any authenticated user can create a walking session.
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // State machine enforcement:
+      allow update: if isAuthenticated() && (
+        // 1. Verified volunteers can accept a searching session
+        (resource.data.status == 'searching'
+         && request.resource.data.status == 'volunteerAccepted'
+         && isVerifiedVolunteer())
+        ||
+        // 2. The session user can confirm a volunteer
+        (resource.data.status == 'volunteerAccepted'
+         && request.resource.data.status == 'volunteerConfirmed'
+         && request.auth.uid == resource.data.userId)
+        ||
+        // 3. Either party can update during active phases
+        (request.auth.uid == resource.data.userId
+         || request.auth.uid == resource.data.volunteerId)
+        ||
+        // 4. Admins always allowed
+        isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Live Locations Collection ──
+    match /liveLocations/{userId} {
+      // Users can always write their own location
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+
+      // Users can read their own; admins can read all
+      allow read: if isAuthenticated()
+                  && (request.auth.uid == userId || isAdmin());
+    }
   }
 }
