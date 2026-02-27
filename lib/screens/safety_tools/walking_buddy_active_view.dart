@@ -97,6 +97,26 @@ class _WalkingBuddyActiveViewState
             body: Center(child: CircularProgressIndicator()),
           );
         }
+        if (snap.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Walking Buddy')),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  const Text('Could not load session'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.go('/home'),
+                    child: const Text('Go Home'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         final session = snap.data;
         if (session == null) {
           return Scaffold(
