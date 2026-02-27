@@ -59,10 +59,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     });
 
-    // Wire hardware-trigger SOS to the same SOS handler used by the button
+    // Wire hardware-trigger SOS to the same SOS handler used by the button.
+    // Only show the hardware-specific dialog — _triggerSOS already shows its
+    // own confirmation dialog, so calling both creates a double-dialog.
     HardwareTriggerService.instance.onSOSTriggered = () {
       if (mounted) {
-        _triggerSOS();
+        _triggerSOS(showConfirmation: false);
         _showHardwareSOSConfirmation();
       }
     };
@@ -104,7 +106,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
-  Future<void> _triggerSOS() async {
+  Future<void> _triggerSOS({bool showConfirmation = true}) async {
     // 1. Trigger SOS on active session if exists
     final session = ref.read(activeSessionProvider).value;
     if (session != null) {
@@ -180,7 +182,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return;
     }
 
-    // Show SOS confirmation
+    // Show SOS confirmation (skipped when hardware trigger shows its own dialog)
+    if (!showConfirmation) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -315,9 +318,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
 
+    // Capture router before the async gap — context may be invalid after delay.
+    final router = GoRouter.of(context);
     Future.delayed(delay, () {
       if (!mounted) return;
-      context.push('/fake-call', extra: {
+      router.push('/fake-call', extra: {
         'callerName': 'Mom',
         'callerLabel': 'Mobile',
       });
