@@ -15,9 +15,9 @@ class UserModel {
   final DateTime? lastHeartbeat;
   final bool verifiedStatus;
 
-  // ── Duress PIN fields ──
-  final String? safePin;
-  final String? duressPin;
+  // ── Duress PIN fields (stored as hashes, never plaintext) ──
+  final String? safePinHash;
+  final String? duressPinHash;
 
   // ── Profile picture ──
   final String? photoUrl;
@@ -37,8 +37,8 @@ class UserModel {
     this.currentLocation,
     this.lastHeartbeat,
     this.verifiedStatus = false,
-    this.safePin,
-    this.duressPin,
+    this.safePinHash,
+    this.duressPinHash,
     this.photoUrl,
     this.verificationStatus = VerificationStatus.unverified,
     this.idFrontUrl,
@@ -58,8 +58,8 @@ class UserModel {
           ? (json['lastHeartbeat'] as Timestamp).toDate()
           : null,
       verifiedStatus: json['verifiedStatus'] as bool? ?? false,
-      safePin: json['safePin'] as String?,
-      duressPin: json['duressPin'] as String?,
+      safePinHash: json['safePinHash'] as String? ?? json['safePin'] as String?,
+      duressPinHash: json['duressPinHash'] as String? ?? json['duressPin'] as String?,
       photoUrl: json['photoUrl'] as String?,
       verificationStatus: _parseVerificationStatus(
         json['verificationStatus'] as String?,
@@ -83,8 +83,8 @@ class UserModel {
         ? Timestamp.fromDate(lastHeartbeat!)
         : null,
     'verifiedStatus': verifiedStatus,
-    'safePin': safePin,
-    'duressPin': duressPin,
+    'safePinHash': safePinHash,
+    'duressPinHash': duressPinHash,
     'photoUrl': photoUrl,
     'verificationStatus': verificationStatus.name,
     'idFrontUrl': idFrontUrl,
@@ -127,8 +127,8 @@ class UserModel {
     GeoPoint? currentLocation,
     DateTime? lastHeartbeat,
     bool? verifiedStatus,
-    String? safePin,
-    String? duressPin,
+    String? safePinHash,
+    String? duressPinHash,
     String? photoUrl,
     VerificationStatus? verificationStatus,
     String? idFrontUrl,
@@ -146,8 +146,8 @@ class UserModel {
       currentLocation: currentLocation ?? this.currentLocation,
       lastHeartbeat: lastHeartbeat ?? this.lastHeartbeat,
       verifiedStatus: verifiedStatus ?? this.verifiedStatus,
-      safePin: clearSafePin ? null : (safePin ?? this.safePin),
-      duressPin: clearDuressPin ? null : (duressPin ?? this.duressPin),
+      safePinHash: clearSafePin ? null : (safePinHash ?? this.safePinHash),
+      duressPinHash: clearDuressPin ? null : (duressPinHash ?? this.duressPinHash),
       photoUrl: photoUrl ?? this.photoUrl,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       idFrontUrl: idFrontUrl ?? this.idFrontUrl,
@@ -160,11 +160,10 @@ class UserModel {
   /// Requires both PINs to be non-null, exactly 4 digits, numeric-only,
   /// and different from each other.
   bool get hasDuressPinSetup {
-    final digitPattern = RegExp(r'^\d{4}$');
-    return safePin != null &&
-        digitPattern.hasMatch(safePin!) &&
-        duressPin != null &&
-        digitPattern.hasMatch(duressPin!) &&
-        safePin != duressPin;
+    return safePinHash != null &&
+        safePinHash!.isNotEmpty &&
+        duressPinHash != null &&
+        duressPinHash!.isNotEmpty &&
+        safePinHash != duressPinHash;
   }
 }
