@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sakhi</string>
+    <string name="sos_button_description">SOS button, double tap to call for help</string>
+</resources>
