@@ -99,17 +99,24 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         // Guard: Admin Dashboard is only available on Web / Desktop.
         if (!isWebOrDesktop) {
-          return const Scaffold(
+          return Scaffold(
+            appBar: AppBar(title: const Text('Unavailable')),
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.block_rounded, size: 64, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Admin Dashboard is only available on Desktop.',
+                  const Icon(Icons.block_rounded, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Admin Dashboard is only available on Web or Desktop.',
                     style: TextStyle(fontSize: 16),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => context.go('/home'),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Go Home'),
                   ),
                 ],
               ),
@@ -163,9 +170,28 @@ final GoRouter appRouter = GoRouter(
       path: '/walking-buddy-active',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
-        return WalkingBuddyActiveView(
-          sessionId: extra['sessionId'] as String? ?? '',
-        );
+        final sessionId = extra['sessionId'] as String? ?? '';
+        if (sessionId.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Walking Buddy')),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  const Text('Invalid or missing session ID.'),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => context.go('/home'),
+                    child: const Text('Go Home'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return WalkingBuddyActiveView(sessionId: sessionId);
       },
     ),
   ],
