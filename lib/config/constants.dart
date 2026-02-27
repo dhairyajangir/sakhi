@@ -25,11 +25,24 @@ class AppConstants {
   static const String broadcastsCollection = 'broadcasts';
   static const String locationSharesCollection = 'locationShares';
   static const String liveLocationsCollection = 'liveLocations';
-  static const String walkingSessionsCollection = 'walking_sessions';
+  static const String walkingSessionsCollection = 'walkingSessions';
+  static const String sessionEvidenceCollection = 'sessionEvidence';
 
   // ── Google Maps / Places API Key ──
-  // Replace with your actual key or load from environment
-  static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
+  // Loaded from compile-time environment: --dart-define=GOOGLE_MAPS_API_KEY=...
+  static const String googleMapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+    defaultValue: '',
+  );
+
+  // ── Feature Flags ──
+  /// Evidence Vault (covert recording) is disabled by default until
+  /// legal compliance for the target jurisdiction is confirmed.
+  /// Enable via: --dart-define=EVIDENCE_VAULT_ENABLED=true
+  static const bool evidenceVaultEnabled = bool.fromEnvironment(
+    'EVIDENCE_VAULT_ENABLED',
+    defaultValue: false,
+  );
 
   // ── Live Tracking Settings ──
   static const int liveTrackingIntervalSec = 10;

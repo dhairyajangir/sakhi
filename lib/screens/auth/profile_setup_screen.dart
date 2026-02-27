@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -21,6 +23,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   UserRole _selectedRole = UserRole.user;
   bool _isLoading = false;
   XFile? _profileImage;
+  Uint8List? _profileImageBytes;
   String? _photoValidationError;
 
   @override
@@ -30,16 +33,31 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _pickProfileImage() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 600,
-    );
-    if (file == null) return;
-    setState(() {
-      _profileImage = file;
-      _photoValidationError = null;
-    });
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 600,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _profileImage = file;
+        _profileImageBytes = bytes;
+        _photoValidationError = null;
+      });
+    } catch (e) {
+      debugPrint('Image picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not pick image. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<String?> _uploadProfilePhoto(String uid) async {
@@ -72,10 +90,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     try {
       final uid = AuthService.instance.currentUser?.uid;
+      if (uid == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Not logged in. Please sign in and try again.')),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
 
       // Upload profile photo if selected
       String? photoUrl;
-      if (_profileImage != null && uid != null) {
+      if (_profileImage != null) {
         photoUrl = await _uploadProfilePhoto(uid);
       }
 
@@ -149,24 +176,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 ),
                               ),
                               clipBehavior: Clip.antiAlias,
-                              child: _profileImage != null
-                                  ? FutureBuilder<List<int>>(
-                                      future: _profileImage!.readAsBytes(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.hasData) {
-                                          return Image.memory(
-                                            snapshot.data! as dynamic,
-                                            fit: BoxFit.cover,
-                                            width: 100,
-                                            height: 100,
-                                          );
-                                        }
-                                        return const Icon(
-                                          Icons.person_rounded,
-                                          size: 50,
-                                          color: SakhiTheme.primary,
-                                        );
-                                      },
+                              child: _profileImageBytes != null
+                                  ? Image.memory(
+                                      _profileImageBytes!,
+                                      fit: BoxFit.cover,
+                                      width: 100,
+                                      height: 100,
                                     )
                                   : const Icon(
                                       Icons.person_rounded,

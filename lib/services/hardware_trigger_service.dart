@@ -26,6 +26,9 @@ class HardwareTriggerService {
   bool _isCooldown = false;
   Timer? _cooldownTimer;
 
+  /// Track the direction of the last volume change to filter mixed presses.
+  bool? _lastVolumeUp;
+
   /// Number of rapid presses required to trigger SOS.
   static const int _requiredPresses = 3;
 
@@ -44,7 +47,7 @@ class HardwareTriggerService {
     _isInitialized = true;
 
     _volumeSub = FlutterVolumeController.addListener((volume) {
-      _onVolumeChange();
+      _onVolumeChange(volume);
     });
 
     debugPrint(
@@ -54,8 +57,21 @@ class HardwareTriggerService {
 
   // ────────────────────────────────────────────────────────────────────────
 
-  void _onVolumeChange() {
+  /// Previous volume level for direction detection.
+  double? _previousVolume;
+
+  void _onVolumeChange(double volume) {
     if (_isCooldown) return;
+
+    // Determine direction and filter mixed presses
+    final isUp = _previousVolume != null ? volume > _previousVolume! : true;
+    _previousVolume = volume;
+
+    if (_lastVolumeUp != null && _lastVolumeUp != isUp) {
+      // Direction changed — reset timestamps
+      _pressTimestamps.clear();
+    }
+    _lastVolumeUp = isUp;
 
     final now = DateTime.now();
     _pressTimestamps.add(now);
@@ -90,7 +106,15 @@ class HardwareTriggerService {
     }
 
     try {
-      final position = await LocationService.instance.getCurrentPosition();
+      final position = await LocationService.instance
+          .getCurrentPosition()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('[HardwareTrigger] Location acquisition timed out');
+              return null;
+            },
+          );
 
       if (position != null) {
         final geoPoint = GeoPoint(position.latitude, position.longitude);
@@ -114,7 +138,10 @@ class HardwareTriggerService {
               return;
             }
             final point = GeoPoint(pos.latitude, pos.longitude);
-            FirestoreService.instance.updateUserLocation(currentUser.uid, point);
+            FirestoreService.instance.updateUserLocation(currentUser.uid, point)
+                .catchError((e) {
+              debugPrint('[HardwareTrigger] updateUserLocation failed: $e');
+            });
           },
         );
 
@@ -123,7 +150,16 @@ class HardwareTriggerService {
         // 3. Notify the UI layer only after successful SOS send
         onSOSTriggered?.call();
       } else {
-        debugPrint('[HardwareTrigger] Could not acquire location');
+        debugPrint('[HardwareTrigger] Could not acquire location — sending SOS without location');
+        // Fallback: send broadcast without location so backend still gets the alert
+        await FirestoreService.instance.sendBroadcast(
+          uid: user.uid,
+          message:
+              'SOS! Emergency help needed immediately! (Hardware trigger — location unavailable)',
+          alertType: 'need_help',
+          location: const GeoPoint(0, 0),
+        );
+        onSOSTriggered?.call();
       }
     } catch (e, st) {
       debugPrint('[HardwareTrigger] Error triggering SOS: $e\n$st');
@@ -139,6 +175,10 @@ class HardwareTriggerService {
     _cooldownTimer?.cancel();
     _cooldownTimer = null;
     _isInitialized = false;
+    _isCooldown = false;
+    _lastVolumeUp = null;
+    _previousVolume = null;
     _pressTimestamps.clear();
+    LocationService.instance.stopLocationUpdates();
   }
 }

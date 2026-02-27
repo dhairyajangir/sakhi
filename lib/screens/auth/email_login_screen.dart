@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,7 +26,8 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   @override
   void initState() {
     super.initState();
-    if (_isAdminPortal) {
+    // Only pre-fill admin email in debug mode for development convenience.
+    if (_isAdminPortal && kDebugMode) {
       _emailController.text = 'admin@sakhi.com';
     }
   }
@@ -105,7 +107,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             ),
           );
           if (retry == true && mounted) {
-            _submit();
+            await _submit();
           }
           return;
         }

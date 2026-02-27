@@ -145,7 +145,19 @@ class WalkingSessionModel {
   static DateTime _parseTimestamp(dynamic value) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
-    return DateTime.now();
+    throw FormatException(
+      'WalkingSessionModel._parseTimestamp: expected Timestamp or DateTime, '
+      'got ${value.runtimeType} ($value)',
+    );
+  }
+
+  /// Nullable variant for optional timestamp fields.
+  // ignore: unused_element
+  static DateTime? _parseTimestampOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
   }
 
   WalkingSessionModel copyWith({

@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -27,8 +29,20 @@ class SosOverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** Convert density-independent pixels to actual pixels. */
+    private fun dpToPx(dp: Int): Int {
+        val density = resources.displayMetrics.density
+        return (dp * density + 0.5f).toInt()
+    }
+
     override fun onCreate() {
         super.onCreate()
+        // Guard: verify overlay permission before showing the button
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Log.e("SosOverlayService", "SYSTEM_ALERT_WINDOW permission not granted — stopping self")
+            stopSelf()
+            return
+        }
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         showOverlayButton()
     }
@@ -49,16 +63,16 @@ class SosOverlayService : Service() {
         }
 
         val params = WindowManager.LayoutParams(
-            160, // width dp-ish (will be px)
-            160, // height
+            dpToPx(160), // width
+            dpToPx(160), // height
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.END
-            x = 40
-            y = 200
+            x = dpToPx(40)
+            y = dpToPx(200)
         }
 
         // Build the overlay view programmatically
@@ -67,7 +81,7 @@ class SosOverlayService : Service() {
         }
 
         // Circular red SOS button
-        val buttonSize = 140
+        val buttonSize = dpToPx(140)
         val button = FrameLayout(this).apply {
             val lp = FrameLayout.LayoutParams(buttonSize, buttonSize)
             lp.gravity = Gravity.CENTER
@@ -76,9 +90,13 @@ class SosOverlayService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 setColor(Color.parseColor("#F44336"))
-                setStroke(4, Color.parseColor("#D32F2F"))
+                setStroke(dpToPx(4), Color.parseColor("#D32F2F"))
             }
             elevation = 12f
+
+            // Accessibility: label for screen readers
+            contentDescription = "SOS button, double tap to call for help"
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         }
 
         val label = TextView(this).apply {

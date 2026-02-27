@@ -26,10 +26,12 @@
 - Configure a **Safe PIN** (genuinely cancels SOS) and a **Duress PIN** (appears to cancel but silently escalates).
 - Duress PIN marks broadcasts as duress-active, keeps the session in SOS state, and continues covert recording — coercion protection.
 
-### 🎙️ Evidence Vault
+### 🎙️ Evidence Vault ⚠️ Complete (requires legal review before deployment)
 - Covert audio recording activates automatically during SOS.
 - Recordings are SHA-256 hashed for tamper-proofing.
 - Uploaded to Firebase Storage; metadata (hash, URL, timestamp) saved in Firestore for chain-of-custody.
+- **⚠️ Covert recording is disabled by default** (`EVIDENCE_VAULT_ENABLED` flag = `false`) until jurisdiction-specific legal compliance is confirmed. See the Legal & Compliance section below.
+- Enable via compile-time flag: `--dart-define=EVIDENCE_VAULT_ENABLED=true`
 
 ### ⚖️ Legal & Compliance
 
@@ -282,25 +284,30 @@ Composite indexes: [`firestore.indexes.json`](firestore.indexes.json) — 5 inde
 | Feature                                                        | Status      |
 | -------------------------------------------------------------- | ----------- |
 | Phone OTP + Email Auth, Role-Based Routing                     | ✅ Complete |
-| Safety Sessions + Volunteer Matching + Live Tracking            | ✅ Complete |
+| Safety Sessions + Volunteer Matching + Live Tracking            | ⚠️ Complete (depends on battery optimization) |
 | Long-Press SOS + Community Broadcasts                          | ✅ Complete |
 | Hardware SOS (Volume Button Trigger)                           | ✅ Complete |
 | Fake Call with Realistic Dialer UI                             | ✅ Complete |
 | Virtual Companion (Walk With Me) with Auto-SOS                 | ✅ Complete |
 | Duress PIN (Anti-Coercion Protection)                          | ✅ Complete |
-| Evidence Vault (Covert Recording + SHA-256 + Cloud Upload)     | ✅ Complete |
-| Time-Bound Location Sharing                                    | ✅ Complete |
+| Evidence Vault (Covert Recording + SHA-256 + Cloud Upload)     | ⚠️ Complete (requires legal review before deployment) |
+| Time-Bound Location Sharing                                    | ⚠️ Complete (depends on battery optimization) |
 | Emergency Contacts CRUD                                        | ✅ Complete |
 | Volunteer KYC Verification (ID Upload)                         | ✅ Complete |
 | Admin Dashboard with God-Mode Map (Web)                        | ✅ Complete |
 | Firestore Security Rules + Composite Indexes                   | ✅ Complete |
-| Battery Optimization & Background Stability                    | 📋 Planned  |
+| Battery Optimization & Background Stability                    | � BLOCKER  |
 
-> **Battery Optimization Notes (Planned):**
-> - **Heartbeat loop**: Currently fires every 30 s. Planned: adaptive backoff (30 s → 60 s → 120 s when idle) and suspension when the app is backgrounded and no active session exists.
-> - **Location polling**: Currently polls every 15 s via `startLocationUpdates`. Planned: switch to fused location / significant-change APIs and make the interval configurable per session type. Use geofencing for virtual companion instead of continuous polling.
-> - **Real-time tracking**: Currently always-on during sessions. Planned: make opt-in and pauseable; suspend writes when the device is stationary (no movement detected).
-> - **Background work**: On Android, location updates already run as a foreground service with notification. Planned: use WorkManager / JobScheduler for deferred tasks (evidence upload retries, heartbeat) to avoid being killed by the OS.
+> **🚫 Battery Optimization (BLOCKER) — Tracking features are NOT production-complete until resolved:**
+>
+> The following features depend on battery optimization being resolved: **Heartbeat every 30 seconds**, **location polling every 15s**, **Safety Sessions + Live Tracking**, and **Time-Bound Location Sharing**.
+>
+> - **Heartbeat loop**: Currently fires every 30 s. **Implemented**: adaptive polling strategy with exponential backoff (30 s → 60 s → 120 s when stationary), immediate high-frequency when movement detected or geofence entered. Pending integration test validation.
+> - **Location polling**: Currently polls every 15 s via `startLocationUpdates`. **Implemented**: adaptive polling with `LocationService.adaptivePollingStrategy` — exponential backoff when stationary (speed < 0.5 m/s), longer intervals (30–60 s) when accuracy > 50 m, immediate 5 s interval when movement or geofence entry is detected.
+> - **Significant-change APIs**: Planned integration with iOS `CLLocationManager` significant-change monitoring and Android `FusedLocationProviderClient` `setPriority(PRIORITY_BALANCED_POWER_ACCURACY)` for background scenarios.
+> - **Geofencing**: Planned usage of `Geolocator`/platform geofencing for virtual companion arrival detection instead of continuous polling.
+> - **Background work**: Android uses foreground service with notification. **Planned**: integrate `WorkManager`/`JobScheduler` for deferred tasks (evidence upload retries, heartbeat keepalive) to survive OS process kills.
+> - **Real-time tracking**: Currently always-on during sessions. **Planned**: make opt-in and pauseable; suspend Firestore writes when the device is stationary (no movement detected for > 60 s).
 
 ---
 

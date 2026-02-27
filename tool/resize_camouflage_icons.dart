@@ -1,11 +1,12 @@
 // ignore_for_file: avoid_print
 /// Resizes the real camouflage icon PNGs into all required
-/// Android mipmap and iOS icon sizes.
+/// Android mipmap and iOS icon sizes, and generates iOS Contents.json.
 ///
 /// Run:  dart run tool/resize_camouflage_icons.dart
 library;
 
 import 'dart:io';
+import 'dart:convert';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -86,6 +87,32 @@ void main() {
       File(outPath).writeAsBytesSync(img.encodePng(resized));
       print('  ✓ $outPath');
     }
+
+    // ── iOS Contents.json ──
+    final contents = {
+      "images": [
+        {"size": "20x20", "idiom": "iphone", "filename": "${name}_20x20@2x.png", "scale": "2x"},
+        {"size": "20x20", "idiom": "iphone", "filename": "${name}_20x20@3x.png", "scale": "3x"},
+        {"size": "29x29", "idiom": "iphone", "filename": "${name}_29x29@2x.png", "scale": "2x"},
+        {"size": "29x29", "idiom": "iphone", "filename": "${name}_29x29@3x.png", "scale": "3x"},
+        {"size": "40x40", "idiom": "iphone", "filename": "${name}_40x40@2x.png", "scale": "2x"},
+        {"size": "40x40", "idiom": "iphone", "filename": "${name}_40x40@3x.png", "scale": "3x"},
+        {"size": "60x60", "idiom": "iphone", "filename": "${name}_60x60@2x.png", "scale": "2x"},
+        {"size": "60x60", "idiom": "iphone", "filename": "${name}_60x60@3x.png", "scale": "3x"},
+        {"size": "20x20", "idiom": "ipad", "filename": "${name}_20x20@2x.png", "scale": "2x"},
+        {"size": "29x29", "idiom": "ipad", "filename": "${name}_29x29@2x.png", "scale": "2x"},
+        {"size": "40x40", "idiom": "ipad", "filename": "${name}_40x40@2x.png", "scale": "2x"},
+        {"size": "76x76", "idiom": "ipad", "filename": "${name}_76x76@1x.png", "scale": "1x"},
+        {"size": "76x76", "idiom": "ipad", "filename": "${name}_76x76@2x.png", "scale": "2x"},
+        {"size": "83.5x83.5", "idiom": "ipad", "filename": "${name}_83.5x83.5@2x.png", "scale": "2x"},
+        {"size": "1024x1024", "idiom": "ios-marketing", "filename": "${name}_1024x1024@1x.png", "scale": "1x"},
+      ],
+      "info": {"version": 1, "author": "xcode"}
+    };
+    File('${iosDir.path}/Contents.json').writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert(contents),
+    );
+    print('  ✓ ${iosDir.path}/Contents.json');
 
     print('  ✓ $name done\n');
   }

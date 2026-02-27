@@ -17,6 +17,7 @@ import '../services/firestore_service.dart';
 import '../services/location_service.dart';
 import '../services/evidence_service.dart';
 import '../services/walking_buddy_service.dart';
+import '../services/walk_with_me_service.dart';
 import '../config/constants.dart';
 
 // ───────── Auth Providers ─────────
@@ -320,4 +321,22 @@ final activeWalkingSessionProvider =
 final walkingSessionByIdProvider =
     StreamProvider.family<WalkingSessionModel?, String>((ref, sessionId) {
   return WalkingBuddyService.instance.sessionStream(sessionId);
+});
+
+// ───────── Walk With Me Providers ─────────
+
+/// Whether a Walk-with-Me heartbeat session is currently active.
+final walkWithMeActiveProvider = Provider<bool>((ref) {
+  // Force reactivity by reading the notifier synchronously.
+  return WalkWithMeService.instance.isActive.value;
+});
+
+/// Remaining seconds on the Walk-with-Me timer.
+final walkWithMeRemainingProvider = Provider<int>((ref) {
+  return WalkWithMeService.instance.remainingSeconds.value;
+});
+
+/// Total interval seconds for the current Walk-with-Me session.
+final walkWithMeTotalProvider = Provider<int>((ref) {
+  return WalkWithMeService.instance.totalSeconds.value;
 });
