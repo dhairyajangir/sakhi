@@ -11,10 +11,12 @@ import '../models/session_model.dart';
 import '../models/emergency_contact.dart';
 import '../models/broadcast_model.dart';
 import '../models/live_location_model.dart';
+import '../models/walking_session_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/location_service.dart';
 import '../services/evidence_service.dart';
+import '../services/walking_buddy_service.dart';
 import '../config/constants.dart';
 
 // ───────── Auth Providers ─────────
@@ -296,4 +298,26 @@ final pendingVolunteersProvider = StreamProvider<List<UserModel>>((ref) {
 final activeLiveLocationsProvider =
     StreamProvider<List<LiveLocationModel>>((ref) {
   return FirestoreService.instance.activeLiveLocationsStream();
+});
+
+// ───────── Walking Buddy Providers ─────────
+
+/// Stream of walking sessions currently searching for volunteers.
+final walkingSearchingSessionsProvider =
+    StreamProvider<List<WalkingSessionModel>>((ref) {
+  return WalkingBuddyService.instance.searchingSessionsStream();
+});
+
+/// Stream the active walking session for the current user.
+final activeWalkingSessionProvider =
+    StreamProvider<WalkingSessionModel?>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return Stream.value(null);
+  return WalkingBuddyService.instance.activeSessionForUser(user.uid);
+});
+
+/// Stream a specific walking session by ID.
+final walkingSessionByIdProvider =
+    StreamProvider.family<WalkingSessionModel?, String>((ref, sessionId) {
+  return WalkingBuddyService.instance.sessionStream(sessionId);
 });
