@@ -21,6 +21,8 @@ import '../screens/safety_tools/virtual_companion_setup.dart';
 import '../screens/safety_tools/active_companion_screen.dart';
 import '../screens/safety_tools/pin_setup_screen.dart';
 import '../screens/safety_tools/camouflage_screen.dart';
+import '../screens/safety_tools/walking_buddy_setup.dart';
+import '../screens/safety_tools/walking_buddy_active_view.dart';
 import '../screens/profile/volunteer_verification_screen.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -152,6 +154,19 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/camouflage',
       builder: (context, state) => const CamouflageScreen(),
+    ),
+    GoRoute(
+      path: '/walking-buddy-setup',
+      builder: (context, state) => const WalkingBuddySetupScreen(),
+    ),
+    GoRoute(
+      path: '/walking-buddy-active',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return WalkingBuddyActiveView(
+          sessionId: extra['sessionId'] as String? ?? '',
+        );
+      },
     ),
   ],
 );
