@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -84,10 +85,14 @@ class MainActivity : FlutterActivity() {
                     result.success(has)
                 }
                 "showOverlay" -> {
-                    // Start the overlay service
-                    val intent = Intent(this, SosOverlayService::class.java)
-                    startService(intent)
-                    result.success(null)
+                    // Check overlay permission before starting service
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                        result.error("PERMISSION_DENIED", "SYSTEM_ALERT_WINDOW permission not granted", null)
+                    } else {
+                        val intent = Intent(this, SosOverlayService::class.java)
+                        startService(intent)
+                        result.success(null)
+                    }
                 }
                 "hideOverlay" -> {
                     val intent = Intent(this, SosOverlayService::class.java)
@@ -103,7 +108,14 @@ class MainActivity : FlutterActivity() {
         val pm = packageManager
 
         // Determine which component should be enabled
-        val targetAlias = if (iconName != null) iconToAlias[iconName] else null
+        val targetAlias = if (iconName != null) {
+            val alias = iconToAlias[iconName]
+            if (alias == null) {
+                Log.e("MainActivity", "setIcon: unknown iconName '$iconName' — not in iconToAlias map")
+                return
+            }
+            alias
+        } else null
 
         // 1. Enable/disable the main activity
         pm.setComponentEnabledSetting(
