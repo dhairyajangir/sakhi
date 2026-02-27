@@ -107,6 +107,20 @@ class _CamouflageScreenState extends State<CamouflageScreen> {
           ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('An unexpected error occurred while changing the icon.'),
+            backgroundColor: SakhiTheme.danger,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
     }
   }
 
