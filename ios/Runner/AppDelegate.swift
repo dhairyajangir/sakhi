@@ -4,6 +4,9 @@ import GoogleMaps
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  /// Retained so the method channel stays alive for the app's lifetime.
+  private var iconChannel: FlutterMethodChannel?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -30,6 +33,7 @@ import GoogleMaps
         let iconName = args?["iconName"] as? String
         self?.setAlternateIcon(iconName, result: result)
       }
+      self.iconChannel = channel
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
