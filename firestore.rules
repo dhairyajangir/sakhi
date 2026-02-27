@@ -100,7 +100,8 @@ service cloud.firestore {
 
     // ── Helper: Check if a volunteer is KYC-verified ──
     function isVerifiedVolunteer() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verificationStatus == 'verified';
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userData.verificationStatus == 'verified' && userData.role == 'volunteer';
     }
 
     // ── Walking Sessions Collection ──
@@ -119,9 +120,10 @@ service cloud.firestore {
 
       // State machine enforcement:
       allow update: if isAuthenticated() && (
-        // 1. Verified volunteers can accept a searching session
+        // 1. Verified volunteers can accept a searching session (must set their own UID)
         (resource.data.status == 'searching'
          && request.resource.data.status == 'volunteerAccepted'
+         && request.resource.data.volunteerId == request.auth.uid
          && isVerifiedVolunteer())
         ||
         // 2. The session user can confirm a volunteer
@@ -129,9 +131,17 @@ service cloud.firestore {
          && request.resource.data.status == 'volunteerConfirmed'
          && request.auth.uid == resource.data.userId)
         ||
-        // 3. Either party can update during active phases
-        (request.auth.uid == resource.data.userId
-         || request.auth.uid == resource.data.volunteerId)
+        // 3. Either party can update during active phases (status must not change)
+        (resource.data.status in ['volunteerConfirmed', 'volunteerReached', 'inProgress']
+         && request.resource.data.status == resource.data.status
+         && (request.auth.uid == resource.data.userId
+             || request.auth.uid == resource.data.volunteerId))
+        ||
+        // 3b. Either party can advance status during active handshake phases
+        (resource.data.status in ['volunteerConfirmed', 'volunteerReached', 'inProgress']
+         && request.resource.data.status in ['volunteerReached', 'inProgress', 'completed', 'cancelled']
+         && (request.auth.uid == resource.data.userId
+             || request.auth.uid == resource.data.volunteerId))
         ||
         // 4. Admins always allowed
         isAdmin()
