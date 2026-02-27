@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +9,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../config/theme.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
+import '../../models/walking_session_model.dart';
 import '../../providers/providers.dart';
 import '../../services/location_service.dart';
+import '../../services/walking_buddy_service.dart';
 
 class VolunteerDashboardScreen extends ConsumerStatefulWidget {
   const VolunteerDashboardScreen({super.key});
@@ -20,16 +23,25 @@ class VolunteerDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _VolunteerDashboardScreenState
-    extends ConsumerState<VolunteerDashboardScreen> {
+    extends ConsumerState<VolunteerDashboardScreen>
+    with SingleTickerProviderStateMixin {
   final Set<String> _dismissedIds = {};
   // ignore: unused_field
   GoogleMapController? _mapController;
   LatLng? _myPosition;
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadPosition();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPosition() async {
@@ -158,6 +170,18 @@ class _VolunteerDashboardScreenState
     );
   }
 
+  String _walkingDistanceLabel(WalkingSessionModel session) {
+    if (_myPosition == null) return '';
+    final km = LocationService.instance.distanceBetween(
+      _myPosition!.latitude,
+      _myPosition!.longitude,
+      session.pickupCoords.latitude,
+      session.pickupCoords.longitude,
+    );
+    if (km < 1) return '${(km * 1000).round()}m away';
+    return '${km.toStringAsFixed(1)}km away';
+  }
+
   /// Locked screen shown when the volunteer has not completed KYC.
   Widget _buildKycLockedView(
     ThemeData theme,
@@ -234,6 +258,116 @@ class _VolunteerDashboardScreenState
   }
 
   Widget _buildDashboardContent(ThemeData theme) {
+    return Column(
+      children: [
+        // Tab bar
+        Container(
+          color: theme.colorScheme.surface,
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: SakhiTheme.primary,
+            labelColor: SakhiTheme.primary,
+            unselectedLabelColor:
+                theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            tabs: const [
+              Tab(text: 'SOS Sessions'),
+              Tab(text: 'Walking Buddy'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildSosTab(theme),
+              _buildWalkingBuddyTab(theme),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWalkingBuddyTab(ThemeData theme) {
+    return StreamBuilder<List<WalkingSessionModel>>(
+      stream: WalkingBuddyService.instance.searchingSessionsStream(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final sessions = (snap.data ?? [])
+            .where((s) => !_dismissedIds.contains(s.sessionId))
+            .toList();
+        if (sessions.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.directions_walk_rounded,
+                    size: 64,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.15)),
+                const SizedBox(height: 16),
+                Text('No walking buddy requests',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text(
+                  'Walking buddy requests will appear here.',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: sessions.length,
+          itemBuilder: (context, index) {
+            final session = sessions[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _WalkingRequestCard(
+                session: session,
+                distanceLabel: _walkingDistanceLabel(session),
+                onAccept: () async {
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user == null) return;
+                  final userModel =
+                      ref.read(currentUserProvider).value;
+                  final nav = GoRouter.of(context);
+                  await WalkingBuddyService.instance.volunteerAccept(
+                    sessionId: session.sessionId,
+                    volunteerId: user.uid,
+                    volunteerName: userModel?.name ?? 'Volunteer',
+                    volunteerPhone: userModel?.phone,
+                  );
+                  if (mounted) {
+                    nav.push('/walking-buddy-active', extra: {
+                      'sessionId': session.sessionId,
+                    });
+                  }
+                },
+                onDecline: () {
+                  setState(() => _dismissedIds.add(session.sessionId));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Request declined'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSosTab(ThemeData theme) {
     final sessionsAsync = ref.watch(searchingSessionsProvider);
 
     return sessionsAsync.when(
@@ -253,7 +387,7 @@ class _VolunteerDashboardScreenState
 
             return Column(
               children: [
-                // Mini Map
+                // Mini Map (SOS tab)
                 SizedBox(
                   height: 200,
                   child: _myPosition == null
@@ -489,6 +623,145 @@ class _SessionRequestCard extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           isSOS ? SakhiTheme.danger : SakhiTheme.safe,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 44),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+/// Card for a walking buddy request on the volunteer dashboard.
+class _WalkingRequestCard extends StatelessWidget {
+  final WalkingSessionModel session;
+  final String distanceLabel;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _WalkingRequestCard({
+    required this.session,
+    required this.distanceLabel,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final elapsed = DateTime.now().difference(session.createdAt);
+    final theme = Theme.of(context);
+    const accentColor = SakhiTheme.connected;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accentColor.withValues(alpha: 0.1),
+                  ),
+                  child: const Icon(
+                    Icons.directions_walk_rounded,
+                    color: accentColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Walking Buddy Request',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${session.userName ?? "User"} • ${elapsed.inMinutes}m ago'
+                        '${distanceLabel.isNotEmpty ? ' • $distanceLabel' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'WALK',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (session.destinationName != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.place_rounded,
+                      size: 16, color: SakhiTheme.danger),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      session.destinationName!,
+                      style: const TextStyle(fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onDecline,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      side: BorderSide(
+                        color:
+                            theme.colorScheme.outline.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Text('Decline'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onAccept,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Accept'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SakhiTheme.connected,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(0, 44),
                     ),
