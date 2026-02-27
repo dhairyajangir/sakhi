@@ -2,7 +2,7 @@
   "name": "sakhi",
   "version": "1.0.0",
   "private": true,
-  "description": "SAKHI Community Safety App — Firebase tooling dependencies",
+  "description": "SAKHI Community Safety App — GitHub CLI and project tooling",
   "dependencies": {
     "gh": "2.8.9"
   }
