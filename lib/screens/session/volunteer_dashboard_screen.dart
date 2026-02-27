@@ -208,13 +208,16 @@ class _VolunteerDashboardScreenState
         icon = Icons.block_rounded;
         color = SakhiTheme.danger;
       case VerificationStatus.unverified:
-      case VerificationStatus.verified:
         title = 'Verification Required';
         message =
             'For the safety of our users, volunteers must complete '
             'identity verification before viewing exact locations.';
         icon = Icons.verified_user_rounded;
         color = SakhiTheme.primary;
+      case VerificationStatus.verified:
+        // Verified volunteers should never reach this view — guard clause
+        // in build() prevents it. If somehow reached, redirect away.
+        return const SizedBox.shrink();
     }
 
     return Center(
@@ -337,16 +340,28 @@ class _VolunteerDashboardScreenState
                   final userModel =
                       ref.read(currentUserProvider).value;
                   final nav = GoRouter.of(context);
-                  await WalkingBuddyService.instance.volunteerAccept(
-                    sessionId: session.sessionId,
-                    volunteerId: user.uid,
-                    volunteerName: userModel?.name ?? 'Volunteer',
-                    volunteerPhone: userModel?.phone,
-                  );
-                  if (mounted) {
-                    nav.push('/walking-buddy-active', extra: {
-                      'sessionId': session.sessionId,
-                    });
+                  try {
+                    await WalkingBuddyService.instance.volunteerAccept(
+                      sessionId: session.sessionId,
+                      volunteerId: user.uid,
+                      volunteerName: userModel?.name ?? 'Volunteer',
+                      volunteerPhone: userModel?.phone,
+                    );
+                    if (mounted) {
+                      nav.push('/walking-buddy-active', extra: {
+                        'sessionId': session.sessionId,
+                      });
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not accept request. It may have been taken by another volunteer.'),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: SakhiTheme.danger,
+                        ),
+                      );
+                    }
                   }
                 },
                 onDecline: () {
