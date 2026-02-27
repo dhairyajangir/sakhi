@@ -10,8 +10,7 @@
         "--dart-define=FIREBASE_APP_ID=1:809644915762:android:0faafd6ea6fba055c2902b",
         "--dart-define=FIREBASE_MESSAGING_SENDER_ID=809644915762",
         "--dart-define=FIREBASE_PROJECT_ID=sakhi-dc3e3",
-        "--dart-define=FIREBASE_STORAGE_BUCKET=sakhi-dc3e3.firebasestorage.app",
-        "--dart-define=EMULATOR_HOST=10.0.2.2"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=sakhi-dc3e3.firebasestorage.app"
       ]
     },
     {
@@ -23,8 +22,7 @@
         "--dart-define=FIREBASE_APP_ID=1:809644915762:android:0faafd6ea6fba055c2902b",
         "--dart-define=FIREBASE_MESSAGING_SENDER_ID=809644915762",
         "--dart-define=FIREBASE_PROJECT_ID=sakhi-dc3e3",
-        "--dart-define=FIREBASE_STORAGE_BUCKET=sakhi-dc3e3.firebasestorage.app",
-        "--dart-define=EMULATOR_HOST=192.168.31.182"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=sakhi-dc3e3.firebasestorage.app"
       ]
     },
     {
@@ -37,8 +35,7 @@
         "--dart-define=FIREBASE_APP_ID=1:809644915762:android:0faafd6ea6fba055c2902b",
         "--dart-define=FIREBASE_MESSAGING_SENDER_ID=809644915762",
         "--dart-define=FIREBASE_PROJECT_ID=sakhi-dc3e3",
-        "--dart-define=FIREBASE_STORAGE_BUCKET=sakhi-dc3e3.firebasestorage.app",
-        "--dart-define=EMULATOR_HOST=127.0.0.1"
+        "--dart-define=FIREBASE_STORAGE_BUCKET=sakhi-dc3e3.firebasestorage.app"
       ]
     }
   ]
