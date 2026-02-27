@@ -500,6 +500,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   context.push('/virtual-companion-setup'),
                             ),
                             _QuickActionCard(
+                              icon: Icons.favorite_rounded,
+                              title: 'Heartbeat\nTimer',
+                              subtitle: 'Interval check-in',
+                              color: SakhiTheme.danger,
+                              onTap: () =>
+                                  context.push('/walk-with-me-setup'),
+                            ),
+                            _QuickActionCard(
                               icon: Icons.masks_rounded,
                               title: 'Camouflage\nMode',
                               subtitle: 'Disguise app icon',
