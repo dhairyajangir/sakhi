@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 
+import '../config/constants.dart';
 import 'firestore_service.dart';
 
 /// Tamper-proof evidence vault.
@@ -38,6 +39,18 @@ class EvidenceService {
   /// successfully. Silently returns `false` on permission denial or
   /// unsupported platforms to avoid blocking the SOS flow.
   Future<bool> startCovertRecording(String sessionId) async {
+    // Feature flag gate — disabled by default until legal review
+    if (!AppConstants.evidenceVaultEnabled) {
+      debugPrint('[EvidenceService] Evidence Vault disabled by feature flag.');
+      return false;
+    }
+
+    // Web platform guard — no file path available
+    if (kIsWeb) {
+      debugPrint('[EvidenceService] Covert recording not supported on web.');
+      return false;
+    }
+
     if (_isRecording) {
       // Already recording — check if it's the same session
       if (_currentSessionId == sessionId) return true;
@@ -81,6 +94,11 @@ class EvidenceService {
       return true;
     } catch (e) {
       debugPrint('[EvidenceService] Could not start recording: $e');
+      // Reset partially-initialized state
+      _filePath = null;
+      _isRecording = false;
+      _currentSessionId = null;
+      _recordingStartTime = null;
       return false;
     }
   }
@@ -97,6 +115,15 @@ class EvidenceService {
     // Validate sessionId
     if (sessionId.isEmpty || !_safeSessionIdPattern.hasMatch(sessionId)) {
       debugPrint('[EvidenceService] Invalid sessionId for upload: $sessionId');
+      return null;
+    }
+
+    // Verify the sessionId matches the active recording session
+    if (_currentSessionId != null && sessionId != _currentSessionId) {
+      debugPrint(
+        '[EvidenceService] sessionId "$sessionId" does not match active '
+        'session "$_currentSessionId". Ignoring.',
+      );
       return null;
     }
 

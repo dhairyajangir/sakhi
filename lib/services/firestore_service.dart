@@ -487,11 +487,15 @@ class FirestoreService {
         '[FirestoreService] WARNING: savePins received what appears to be '
         'plaintext PINs. PINs should be hashed before calling savePins.',
       );
+      throw FormatException(
+        'savePins rejected: PINs appear to be plaintext (short numeric values). '
+        'Hash PINs before calling savePins.',
+      );
     }
 
     await _db.collection(AppConstants.usersCollection).doc(uid).update({
-      'safePin': safePin,
-      'duressPin': duressPin,
+      'safePinHash': safePin,
+      'duressPinHash': duressPin,
     });
   }
 
@@ -572,7 +576,7 @@ class FirestoreService {
     required String sha256Hash,
     required DateTime recordedAt,
   }) async {
-    await _db.collection('session_evidence').doc(sessionId).set({
+    await _db.collection(AppConstants.sessionEvidenceCollection).doc(sessionId).set({
       'sessionId': sessionId,
       'downloadUrl': downloadUrl,
       'sha256Hash': sha256Hash,

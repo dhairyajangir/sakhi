@@ -63,8 +63,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Something went wrong: $e'),
+          const SnackBar(
+            content: Text('Something went wrong. Please try again.'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: SakhiTheme.danger,
           ),

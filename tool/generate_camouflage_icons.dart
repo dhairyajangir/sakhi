@@ -10,8 +10,7 @@ import 'dart:convert';
 // ── PNG encoder helpers (minimal, no package dependency) ──
 
 /// Creates an uncompressed 8-bit RGBA PNG of [size]×[size] filled
-/// with the given RGBA colour, with a single white character glyph
-/// approximation (a white square) in the centre.
+/// with the given RGBA colour.
 Uint8List createSolidPng(int size, int r, int g, int b) {
   // Build raw RGBA pixel rows.  Each row is prefixed with filter byte 0.
   final raw = BytesBuilder();

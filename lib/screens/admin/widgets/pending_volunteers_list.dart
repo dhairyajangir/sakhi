@@ -266,7 +266,6 @@ class _VolunteerReviewDialogState extends State<_VolunteerReviewDialog> {
     try {
       await FirestoreService.instance.approveVolunteer(widget.volunteer.uid);
       if (!mounted) return;
-      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -276,6 +275,7 @@ class _VolunteerReviewDialogState extends State<_VolunteerReviewDialog> {
           backgroundColor: SakhiTheme.safe,
         ),
       );
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -328,7 +328,6 @@ class _VolunteerReviewDialogState extends State<_VolunteerReviewDialog> {
       await FirestoreService.instance.rejectVolunteer(widget.volunteer.uid);
 
       if (!mounted) return;
-      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -338,6 +337,7 @@ class _VolunteerReviewDialogState extends State<_VolunteerReviewDialog> {
           backgroundColor: SakhiTheme.danger,
         ),
       );
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

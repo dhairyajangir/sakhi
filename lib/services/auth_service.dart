@@ -75,8 +75,16 @@ class AuthService {
   }
 
   // ── Predefined Admin Credentials (Web / Desktop only) ─────────────
-  static const String _adminEmail = 'admin@sakhi.com';
-  static const String _adminPassword = 'Admin@123';
+  // Loaded from compile-time environment for security.
+  // Pass via: --dart-define=ADMIN_EMAIL=... --dart-define=ADMIN_PASSWORD=...
+  static const String _adminEmail = String.fromEnvironment(
+    'ADMIN_EMAIL',
+    defaultValue: 'admin@sakhi.com',
+  );
+  static const String _adminPassword = String.fromEnvironment(
+    'ADMIN_PASSWORD',
+    defaultValue: 'Admin@123',
+  );
 
   /// Returns `true` when the supplied credentials match the hardcoded admin
   /// account.  Only meaningful on Web / Desktop where standard user login is
@@ -104,7 +112,7 @@ class AuthService {
   }) async {
     if (isWebOrDesktop) {
       if (!validateAdminCredentials(email: email, password: password)) {
-        throw FirebaseAuthException(
+        throw AdminAuthException(
           code: 'admin-only',
           message:
               'Access Denied: Standard user login is restricted on Desktop/Web.',
@@ -113,7 +121,6 @@ class AuthService {
 
       // Credentials match — get a real Firebase Auth session so Firestore
       // security rules will recognise the request.
-      _isAdminOverrideActive = true;
 
       UserCredential cred;
       try {
@@ -121,16 +128,15 @@ class AuthService {
           email: _adminEmail,
           password: _adminPassword,
         );
-      } on FirebaseAuthException catch (_) {
+      } on AdminAuthException catch (_) {
         // Firebase Auth user doesn't exist yet → create it once.
         cred = await _auth.createUserWithEmailAndPassword(
           email: _adminEmail,
           password: _adminPassword,
         );
       } catch (e) {
-        // `firebase_auth` throws its own FirebaseAuthException. Since we
-        // declared a local class with the same name, catch broadly and
-        // check the error message for "user-not-found" to disambiguate.
+        // `firebase_auth` throws its own FirebaseAuthException. Catch broadly
+        // and check the error message for "user-not-found" to disambiguate.
         final msg = e.toString();
         if (msg.contains('user-not-found') ||
             msg.contains('INVALID_LOGIN_CREDENTIALS') ||
@@ -143,6 +149,9 @@ class AuthService {
           rethrow;
         }
       }
+
+      // Only set admin override after successful auth
+      _isAdminOverrideActive = true;
 
       // Ensure a Firestore admin profile doc exists.
       final uid = cred.user!.uid;
@@ -250,10 +259,10 @@ class AuthService {
 
 /// Custom exception used when non-admin credentials are supplied on
 /// Web / Desktop.
-class FirebaseAuthException implements Exception {
+class AdminAuthException implements Exception {
   final String code;
   final String message;
-  const FirebaseAuthException({required this.code, required this.message});
+  const AdminAuthException({required this.code, required this.message});
 
   @override
   String toString() => message;

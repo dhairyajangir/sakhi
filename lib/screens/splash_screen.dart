@@ -67,6 +67,10 @@ class _SplashScreenState extends State<SplashScreen>
           return;
         }
         // Fetch role and redirect accordingly
+        // TODO(security): The `role` field lives in the user-writable Firestore
+        // document. For production, verify admin status server-side (e.g. via
+        // Firebase Custom Claims on the ID token) to prevent privilege
+        // escalation by a user editing their own document.
         final userModel = await FirestoreService.instance.getUser(user.uid);
         if (!mounted) return;
         switch (userModel?.role ?? UserRole.user) {

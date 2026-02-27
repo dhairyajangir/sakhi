@@ -113,14 +113,14 @@ class _WalkingBuddySetupScreenState
   }
 
   Future<void> _selectPrediction(_PlacePrediction prediction) async {
-    _destinationController.text = prediction.description;
-    _destinationName = prediction.description;
     setState(() => _predictions = []);
     FocusScope.of(context).unfocus();
 
     final key = AppConstants.googleMapsApiKey;
     if (key == 'YOUR_GOOGLE_MAPS_API_KEY') {
-      // Without a real API key, we cannot geocode. Let user drop a pin instead.
+      // Without a real API key, we cannot geocode. Set name optimistically.
+      _destinationController.text = prediction.description;
+      _destinationName = prediction.description;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Tap the map to set the destination if Places API is unavailable.'),
         behavior: SnackBarBehavior.floating,
@@ -142,7 +142,12 @@ class _WalkingBuddySetupScreenState
         if (loc != null) {
           final lat = (loc['lat'] as num).toDouble();
           final lng = (loc['lng'] as num).toDouble();
-          setState(() => _destinationLocation = LatLng(lat, lng));
+          // Set name/coordinates only after successful geocode
+          setState(() {
+            _destinationLocation = LatLng(lat, lng);
+            _destinationName = prediction.description;
+            _destinationController.text = prediction.description;
+          });
         }
       }
     } catch (e) {

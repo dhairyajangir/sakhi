@@ -34,7 +34,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     // Do NOT pre-fill PIN controllers — PINs should never be displayed.
     // Instead, set a flag indicating whether PINs are already configured.
     final user = ref.read(currentUserProvider).value;
-    _pinsConfigured = user?.safePin != null && user?.duressPin != null;
+    _pinsConfigured = user?.safePinHash != null && user?.duressPinHash != null;
   }
 
   @override
@@ -62,7 +62,18 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     }
 
     final uid = ref.read(authStateProvider).value?.uid;
-    if (uid == null) return;
+    if (uid == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Not logged in. Please sign in and try again.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: SakhiTheme.danger,
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -108,6 +119,36 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Already-configured indicator ──
+                if (_pinsConfigured) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: SakhiTheme.safe.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: SakhiTheme.safe.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded,
+                            color: SakhiTheme.safe, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'PINs are already configured. Enter new PINs below to update them.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: SakhiTheme.safe,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 // ── Explanation card ──
                 Container(
                   padding: const EdgeInsets.all(16),

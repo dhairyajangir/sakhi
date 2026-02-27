@@ -144,7 +144,6 @@ class _ActiveCompanionScreenState extends ConsumerState<ActiveCompanionScreen> {
   Future<void> _autoTriggerSOS() async {
     if (_arrivedSafely || _sosTriggered) return;
     HapticFeedback.heavyImpact();
-    setState(() => _sosTriggered = true);
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -171,9 +170,21 @@ class _ActiveCompanionScreenState extends ConsumerState<ActiveCompanionScreen> {
         );
       }
 
+      // Only mark as triggered after Firestore ops succeed
+      if (mounted) setState(() => _sosTriggered = true);
       debugPrint('[VirtualCompanion] Auto-SOS triggered');
     } catch (e) {
       debugPrint('[VirtualCompanion] Failed to trigger SOS: $e');
+      // Retry — the SOS is critical and must not silently fail
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('SOS failed to send. Retrying...'),
+            backgroundColor: SakhiTheme.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

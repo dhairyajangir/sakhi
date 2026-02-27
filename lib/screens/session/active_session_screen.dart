@@ -184,7 +184,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         final pin = pinController.text.trim();
                         if (pin.length != 4) {
                           setSheetState(
@@ -193,7 +193,7 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                           return;
                         }
 
-                        if (pin == user.safePin) {
+                        if (pin == user.safePinHash) {
                           // ── SAFE PIN: genuinely cancel ──
                           Navigator.pop(ctx);
                           ref
@@ -208,10 +208,10 @@ class _ActiveSessionScreenState extends ConsumerState<ActiveSessionScreen> {
                               ),
                             );
                           }
-                        } else if (pin == user.duressPin) {
+                        } else if (pin == user.duressPinHash) {
                           // ── DURESS PIN: fake-cancel ──
                           // Do NOT end the session. Escalate silently.
-                          _handleDuressCancellation(sessionId, user.uid);
+                          await _handleDuressCancellation(sessionId, user.uid);
                           Navigator.pop(ctx);
                           context.go('/home');
                           if (mounted) {

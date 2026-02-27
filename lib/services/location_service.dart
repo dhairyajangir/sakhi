@@ -164,6 +164,7 @@ class LocationService {
   StreamSubscription<Position>? _liveTrackingSub;
   DateTime? _lastLiveWriteTime;
   bool _isLiveTracking = false;
+  String? _activeLiveUserId;
 
   /// Whether live tracking is currently active.
   bool get isLiveTracking => _isLiveTracking;
@@ -188,6 +189,7 @@ class LocationService {
     // Prevent duplicate subscriptions
     if (_isLiveTracking) stopLiveTracking();
     _isLiveTracking = true;
+    _activeLiveUserId = userId;
     _lastLiveWriteTime = null;
 
     final distFilter = AppConstants.liveTrackingDistanceFilterM;
@@ -276,8 +278,13 @@ class LocationService {
     _isLiveTracking = false;
     _lastLiveWriteTime = null;
 
-    if (userId != null) {
-      FirestoreService.instance.deactivateLiveLocation(userId);
+    final resolvedUserId = userId ?? _activeLiveUserId;
+    _activeLiveUserId = null;
+
+    if (resolvedUserId != null) {
+      FirestoreService.instance.deactivateLiveLocation(resolvedUserId);
+    } else {
+      debugPrint('[LocationService] stopLiveTracking: no userId available for Firestore cleanup');
     }
 
     debugPrint('[LocationService] Live tracking stopped');
