@@ -151,7 +151,6 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     try {
-      // On Web/Desktop, if admin override is still active, go straight to admin.
       if (isWebOrDesktop && AuthService.instance.isAdminOverrideActive) {
         if (mounted) context.go('/admin');
         return;
@@ -165,11 +164,7 @@ class _SplashScreenState extends State<SplashScreen>
           context.go('/profile-setup');
           return;
         }
-        // Fetch role and redirect accordingly
-        // TODO(security): The `role` field lives in the user-writable Firestore
-        // document. For production, verify admin status server-side (e.g. via
-        // Firebase Custom Claims on the ID token) to prevent privilege
-        // escalation by a user editing their own document.
+
         final userModel = await FirestoreService.instance.getUser(user.uid);
         if (!mounted) return;
         switch (userModel?.role ?? UserRole.user) {
@@ -177,7 +172,6 @@ class _SplashScreenState extends State<SplashScreen>
             if (kIsWeb) {
               context.go('/admin');
             } else {
-              // Admin cannot access from mobile — sign out
               await AuthService.instance.signOut();
               if (mounted) context.go('/login');
             }
@@ -187,7 +181,6 @@ class _SplashScreenState extends State<SplashScreen>
             context.go('/home');
         }
       } else {
-        // On Web/Desktop, go directly to email login (admin portal).
         if (isWebOrDesktop) {
           if (mounted) context.go('/email-login');
         } else {
@@ -195,7 +188,6 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
     } catch (e) {
-      // Firebase not configured – go to login
       if (mounted) context.go('/login');
     }
   }
@@ -211,6 +203,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Dynamically pull the theme colors
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
     return Scaffold(
       body: AnimatedGradientBackground(
         child: Stack(
@@ -223,6 +219,7 @@ class _SplashScreenState extends State<SplashScreen>
                   painter: _ParticlePainter(
                     particles: _particles,
                     progress: _particleController.value,
+                    color: primaryColor, // Pass theme color to painter
                   ),
                 ),
               ),
@@ -254,9 +251,8 @@ class _SplashScreenState extends State<SplashScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFFE91E63)
-                                            .withValues(
-                                                alpha: _glowOpacity.value),
+                                        color: primaryColor.withValues(
+                                            alpha: _glowOpacity.value),
                                         blurRadius: 40,
                                         spreadRadius: 8,
                                       ),
@@ -296,10 +292,10 @@ class _SplashScreenState extends State<SplashScreen>
                               return LinearGradient(
                                 begin: Alignment(dx - 0.3, 0),
                                 end: Alignment(dx + 0.3, 0),
-                                colors: const [
-                                  Color(0xFFE91E63),
-                                  Color(0xFFFFFFFF),
-                                  Color(0xFFE91E63),
+                                colors: [
+                                  primaryColor,
+                                  Colors.white,
+                                  primaryColor,
                                 ],
                                 stops: const [0.0, 0.5, 1.0],
                               ).createShader(bounds);
@@ -307,14 +303,20 @@ class _SplashScreenState extends State<SplashScreen>
                             blendMode: BlendMode.srcATop,
                             child: child,
                           ),
-                          child: const Text(
+                          child: Text(
                             'SAKHI',
-                            style: TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 12,
-                              color: Colors.white,
-                            ),
+                            style: theme.textTheme.displayLarge?.copyWith(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 12,
+                                  color: Colors.white,
+                                ) ??
+                                const TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 12,
+                                  color: Colors.white,
+                                ),
                           ),
                         ),
                       ),
@@ -329,12 +331,18 @@ class _SplashScreenState extends State<SplashScreen>
                         opacity: _hindiFade,
                         child: Text(
                           'सखी',
-                          style: TextStyle(
-                            fontSize: 22,
-                            letterSpacing: 6,
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                                fontSize: 22,
+                                letterSpacing: 6,
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w500,
+                              ) ??
+                              TextStyle(
+                                fontSize: 22,
+                                letterSpacing: 6,
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                       ),
                     ),
@@ -348,12 +356,18 @@ class _SplashScreenState extends State<SplashScreen>
                         opacity: _taglineFade,
                         child: Text(
                           'Your Trusted Friend & Protector',
-                          style: TextStyle(
-                            fontSize: 14,
-                            letterSpacing: 3,
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w300,
-                          ),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                                fontSize: 14,
+                                letterSpacing: 3,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w300,
+                              ) ??
+                              TextStyle(
+                                fontSize: 14,
+                                letterSpacing: 3,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w300,
+                              ),
                         ),
                       ),
                     ),
@@ -412,8 +426,13 @@ class _Particle {
 class _ParticlePainter extends CustomPainter {
   final List<_Particle> particles;
   final double progress; // 0-1
+  final Color color;
 
-  _ParticlePainter({required this.particles, required this.progress});
+  _ParticlePainter({
+    required this.particles,
+    required this.progress,
+    required this.color,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -422,14 +441,15 @@ class _ParticlePainter extends CustomPainter {
       final x = (p.startX + math.sin(t * 2 * math.pi) * 0.06) * size.width;
       final y = (p.startY - t * 0.3) % 1.0 * size.height;
       final paint = Paint()
-        ..color = const Color(0xFFF48FB1).withValues(alpha: p.opacity)
+        ..color = color.withValues(alpha: p.opacity)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
       canvas.drawCircle(Offset(x, y), p.radius, paint);
     }
   }
 
   @override
-  bool shouldRepaint(_ParticlePainter old) => true;
+  bool shouldRepaint(_ParticlePainter old) => 
+      progress != old.progress || color != old.color;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -464,6 +484,9 @@ class _AnimatedDotLoaderState extends State<_AnimatedDotLoader>
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic theme color for the loader shadow
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
@@ -489,8 +512,7 @@ class _AnimatedDotLoaderState extends State<_AnimatedDotLoader>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE91E63)
-                              .withValues(alpha: 0.4 * bounce),
+                          color: primaryColor.withValues(alpha: 0.4 * bounce),
                           blurRadius: 6,
                           spreadRadius: 1,
                         ),
