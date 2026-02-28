@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'dart:io' if (dart.library.html) 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -58,8 +59,9 @@ class _VolunteerVerificationScreenState
       final bytes = await file.readAsBytes();
       task = storageRef.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     } else {
-      final bytes = await file.readAsBytes();
-      task = storageRef.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      // Use putFile on native platforms — more reliable than putData
+      final ioFile = File(file.path);
+      task = storageRef.putFile(ioFile, SettableMetadata(contentType: 'image/jpeg'));
     }
 
     _uploadSubscription?.cancel();
@@ -73,6 +75,14 @@ class _VolunteerVerificationScreenState
     });
 
     final snapshot = await task;
+
+    if (snapshot.state != TaskState.success) {
+      throw FirebaseException(
+        plugin: 'firebase_storage',
+        message: 'Upload did not complete successfully (state: ${snapshot.state})',
+      );
+    }
+
     return await snapshot.ref.getDownloadURL();
   }
 
@@ -112,6 +122,7 @@ class _VolunteerVerificationScreenState
       Navigator.of(context).pop();
     } on FirebaseException catch (e) {
       if (!mounted) return;
+      debugPrint('Volunteer verification FirebaseException: code=${e.code}, message=${e.message}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Upload failed: ${e.message}'),
@@ -119,9 +130,9 @@ class _VolunteerVerificationScreenState
           backgroundColor: SakhiTheme.danger,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
-      debugPrint('Volunteer verification error: $e');
+      debugPrint('Volunteer verification error: $e\n$st');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Something went wrong. Please try again.'),
