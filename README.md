@@ -1,105 +1,214 @@
-# SAKHI — Community Safety App
+# SAKHI — सखी — Your Trusted Companion
 
-> **Your Trusted Companion** — a cross-platform women's safety application built with Flutter & Firebase that protects users through real-time monitoring, volunteer assistance, covert SOS triggers, and anti-coercion safeguards.
+> A cross-platform **women's safety app** built with **Flutter & Firebase** — real-time monitoring, volunteer assistance, covert SOS triggers, and anti-coercion safeguards.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Initial Setup](#initial-setup)
+- [Running the App](#running-the-app)
+- [Admin Access](#admin-access)
+- [Project Structure](#project-structure)
+- [Firestore Data Model](#firestore-data-model)
+- [Security Rules](#security-rules)
+- [Platform Support](#platform-support)
+- [Environment Variables](#environment-variables)
+- [User Roles](#user-roles)
+- [Screens Overview](#screens-overview)
+- [License](#license)
 
 ---
 
 ## Features
 
-### 🛡️ Walking Buddy System
-- Start a safety session before travelling alone.
-- Nearby verified volunteers are notified and can accept as your virtual companion.
-- Real-time Google Maps location monitoring throughout the session.
-- Heartbeat every 30 seconds — if the user becomes unresponsive, SOS triggers automatically.
-
-### 🆘 Multi-Mode SOS
-- **Long-Press SOS Button** — persistent floating button on every screen; 1.5-second hold with haptic feedback prevents accidental triggers.
-- **Hardware SOS (Volume Buttons)** — 3 rapid volume-button presses within 3 seconds fires automatic SOS + location broadcast. Works without unlocking the screen.
-- **Virtual Companion Auto-SOS** — countdown timer with destination; if the user doesn't confirm arrival, SOS fires at 00:00.
-
-### 📞 Fake Call
-- Schedule a realistic fake incoming call (5s / 15s / 1 min delay).
-- Full Android dialer UI: ringtone, pulsing avatar, accept/decline, in-call controls (mute, keypad, speaker), live call timer.
-- Configurable caller name & label.
-
-### 🔐 Duress PIN (Anti-Coercion)
-- Configure a **Safe PIN** (genuinely cancels SOS) and a **Duress PIN** (appears to cancel but silently escalates).
-- Duress PIN marks broadcasts as duress-active, keeps the session in SOS state, and continues covert recording — coercion protection.
-
-### 🎙️ Evidence Vault ⚠️ Complete (requires legal review before deployment)
-- Covert audio recording activates automatically during SOS.
-- Recordings are SHA-256 hashed for tamper-proofing.
-- Uploaded to Firebase Storage; metadata (hash, URL, timestamp) saved in Firestore for chain-of-custody.
-- **⚠️ Covert recording is disabled by default** (`EVIDENCE_VAULT_ENABLED` flag = `false`) until jurisdiction-specific legal compliance is confirmed. See the Legal & Compliance section below.
-- Enable via compile-time flag: `--dart-define=EVIDENCE_VAULT_ENABLED=true`
-
-### ⚖️ Legal & Compliance
-
-> **Warning — Covert audio recording is subject to strict legal constraints.**
->
-> - Many jurisdictions require **all-party (two-party) consent** before recording conversations. Using the Evidence Vault feature without proper consent may violate wiretapping, eavesdropping, or surveillance laws.
-> - In **GDPR regions** (EU/EEA/UK), recording individuals constitutes processing of personal data and requires a lawful basis (e.g., legitimate interest for personal safety, explicit consent).
-> - **CCPA** and other US state privacy laws may impose additional obligations regarding disclosure and data subject rights.
->
-> **Developers and deployers MUST:**
-> 1. Consult qualified legal counsel before enabling covert recording in any deployment.
-> 2. Implement **user notification and consent flows** appropriate to the target jurisdiction.
-> 3. Define and enforce **data-retention policies** — recordings and associated metadata should be retained only as long as legally required and then securely deleted.
-> 4. Provide a mechanism for **data deletion requests** (right to erasure) from recorded parties.
-> 5. Maintain **audit logs** of recording events for accountability.
->
-> The authors of this project provide no legal advice. Compliance is the sole responsibility of the deployer.
-
-### 🚶 Walk With Me (Virtual Companion)
-- Set a destination and expected travel duration (15 / 30 / 45 / 60 / 90 min).
-- Live countdown with circular progress ring.
-- "I've Arrived Safely" button or automatic SOS when the timer expires.
-
-### 📡 Community Safety Broadcast
-- Send geo-located safety alerts within a 2 km radius.
-- Alert types: Unsafe Area, Suspicious Activity, Need Help, Road Issue.
-- Real-time broadcast feed on the home screen.
-
-### 📍 Time-Bound Location Sharing
-- Share live GPS location for 15 min / 30 min / 1 hour / 2 hours.
-- Auto-expires — no manual cleanup needed.
-- Throttled updates (every 15 seconds) to minimize battery drain.
-
-### 👥 Volunteer System
-- Role-based onboarding: users choose "Stay Safe" or "Volunteer" at signup.
-- **KYC Verification** — government ID upload (front + back) to Firebase Storage; pending/verified/rejected status gates dashboard access.
-  - **Encryption**: All uploads are transmitted over TLS and stored with Firebase Storage server-side encryption at rest.
-  - **Data Retention & Deletion**: KYC images should be retained only for the duration required for verification. Once verified (or upon account deletion), images must be securely deleted from Firebase Storage. Implement a Cloud Function or admin procedure for periodic purging of expired KYC data.
-  - **GDPR / CCPA Compliance**: Users have the right to erasure of their KYC data. The lawful basis for processing government IDs is legitimate interest (volunteer safety vetting). Implement data-minimization by storing only the minimum required information.
-  - **Access Control**: KYC images are accessible only to admin-role users via Firebase Storage security rules and role-based Firestore access. No other users or volunteers can view uploaded IDs.
-  - **Audit Logging**: All verification status changes (pending → verified/rejected) should be logged with timestamps and the reviewing admin's UID for accountability.
-  - **Privacy Contact**: For data access/deletion requests related to KYC data, contact the project administrator.
-- Volunteer dashboard with availability toggle, live map of help requests, and accept/decline controls.
-
-### 🖥️ Admin Dashboard (Web-Only)
-- **God-Mode Live Map** — all active users, volunteers, and SOS markers color-coded in real time.
-- **Live Alerts** — data tables of active sessions and community broadcasts.
-- **User Management** — view all users, promote roles (user → volunteer → admin).
-
-### 📇 Emergency Contacts
-- CRUD management of trusted contacts (name, phone, relationship).
-- Stored in Firestore subcollection under each user profile.
+| Feature | Description |
+|---|---|
+| **Multi-Mode SOS** | Long-press button (1.5 s hold), hardware trigger (3 volume-button presses in 3 s), auto-SOS on timer expiry |
+| **Walking Buddy** | Request a KYC-verified volunteer companion with real-time Google Maps tracking & dual handshake verification |
+| **Virtual Companion** | Set destination + timer (15–90 min); auto-SOS if you don't confirm arrival |
+| **Heartbeat Timer** | Configurable check-in interval (10 s – 60 min); auto-SOS on missed heartbeat with background service |
+| **Fake Call** | Realistic incoming call simulation (5 s / 15 s / 1 min delay) with dialer UI, ringtone & call timer |
+| **Duress PIN** | Safe PIN genuinely cancels SOS; Duress PIN *appears* to cancel but silently escalates — anti-coercion |
+| **Evidence Vault** | Covert audio recording during SOS, SHA-256 hashed, uploaded to Firebase Storage *(disabled by default)* |
+| **Community Broadcasts** | Geo-located safety alerts within 2 km radius (Unsafe Area, Suspicious Activity, Need Help, Road Issue) |
+| **Location Sharing** | Time-bound live GPS sharing (15 min – 2 hrs) with auto-expiry |
+| **Emergency Contacts** | CRUD management of trusted contacts stored in Firestore |
+| **Volunteer System** | Role-based onboarding, KYC ID verification, availability toggle, live dashboard |
+| **Camouflage Mode** | Disguise app icon as Calculator, Calendar, Notes, etc. |
+| **Admin Dashboard** | Web-only god-mode live map, alerts table, user management, KYC approval/rejection |
+| **SOS Overlay** | Floating draggable SOS button on top of all apps (Android) |
 
 ---
 
 ## Tech Stack
 
-| Layer          | Technology                                                |
-| -------------- | --------------------------------------------------------- |
-| Frontend       | Flutter (Dart)                                            |
-| State Mgmt     | Riverpod 3.x                                             |
-| Navigation     | GoRouter                                                  |
-| Backend        | Firebase (Auth, Firestore, Cloud Messaging, Storage)      |
-| Maps & Location| Geolocator + Google Maps Flutter                          |
-| Notifications  | Firebase Cloud Messaging (FCM)                            |
-| Audio Recording| record (AAC-LC via platform codecs)                       |
-| Tamper-Proof   | crypto (SHA-256 hashing)                                  |
-| Safety Tools   | flutter_ringtone_player, flutter_volume_controller        |
+| Layer | Technology |
+|---|---|
+| Framework | Flutter (Dart ^3.11.0) |
+| State Management | Riverpod 3.x |
+| Navigation | GoRouter |
+| Backend | Firebase Auth · Firestore · Cloud Messaging · Storage |
+| Maps & Location | Google Maps Flutter + Geolocator |
+| Audio | `record` (AAC-LC via platform codecs) |
+| Crypto | `crypto` (SHA-256 hashing) |
+| Background | `flutter_background_service` (Android foreground service) |
+
+---
+
+## Prerequisites
+
+| Tool | Version | Install |
+|---|---|---|
+| Flutter SDK | ^3.11.0 | [flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install) |
+| Dart SDK | ^3.11.0 | Bundled with Flutter |
+| Firebase CLI | latest | `npm install -g firebase-tools` |
+| FlutterFire CLI | latest | `dart pub global activate flutterfire_cli` |
+| Android Studio / Xcode | latest | For emulators & build tools |
+| Google Maps API Key | — | [console.cloud.google.com](https://console.cloud.google.com/apis/credentials) |
+
+**Verify Flutter is ready:**
+
+```bash
+flutter doctor
+```
+
+---
+
+## Initial Setup
+
+### 1. Clone & install dependencies
+
+```bash
+git clone https://github.com/dhairyajangir/SAKHI.git
+cd SAKHI
+flutter pub get
+```
+
+### 2. Firebase project
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
+2. **Add Android app** (`com.example.sakhi`) → download `google-services.json` → place at `android/app/google-services.json`
+3. **Add iOS app** (`com.example.sakhi`) → download `GoogleService-Info.plist` → place at `ios/Runner/GoogleService-Info.plist`
+4. Enable these services in Firebase Console:
+   - **Authentication** → Enable **Phone** provider + **Email/Password** provider
+   - **Cloud Firestore** → Create database (choose region, start in test mode)
+   - **Firebase Storage** → Enable
+   - **Cloud Messaging** → Enabled by default
+
+### 3. Generate Firebase config
+
+```bash
+flutterfire configure
+```
+
+This auto-generates `lib/firebase_options.dart`.
+
+### 4. Deploy Firestore rules & indexes
+
+```bash
+firebase login
+firebase deploy --only firestore
+```
+
+### 5. Android SHA fingerprints (required for Phone Auth)
+
+```bash
+cd android
+./gradlew signingReport
+```
+
+Add SHA-1 and SHA-256 in **Firebase Console → Project Settings → Android App**.
+
+### 6. Google Maps API key
+
+Enable **Maps SDK for Android** and **Maps SDK for iOS** in Google Cloud Console, then:
+
+- **Android:** set key in `android/app/src/main/AndroidManifest.xml` → `com.google.android.geo.API_KEY`
+- **iOS:** set key in `ios/Runner/AppDelegate.swift` → `GMSServices.provideAPIKey("KEY")`
+
+---
+
+## Running the App
+
+### Android (emulator or device)
+
+```bash
+flutter run
+```
+
+### Web (Admin Dashboard)
+
+```bash
+flutter run -d chrome
+```
+
+### With environment variables (PowerShell)
+
+```powershell
+flutter run `
+  --dart-define=ADMIN_EMAIL=admin@sakhi.com `
+  --dart-define=ADMIN_PASSWORD=Admin@123 `
+  --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY `
+  --dart-define=EVIDENCE_VAULT_ENABLED=false
+```
+
+### With environment variables (Bash)
+
+```bash
+flutter run \
+  --dart-define=ADMIN_EMAIL=admin@sakhi.com \
+  --dart-define=ADMIN_PASSWORD=Admin@123 \
+  --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY \
+  --dart-define=EVIDENCE_VAULT_ENABLED=false
+```
+
+### Convenience scripts (Windows)
+
+| Script | Target |
+|---|---|
+| `.\run.ps1` | Android emulator |
+| `.\run-device.ps1` | Physical Android device |
+| `.\run-web.ps1` | Chrome (Admin Dashboard) |
+
+---
+
+## Admin Access
+
+The **Admin Dashboard** is accessible only on **Web / Windows / macOS / Linux**.
+
+### Default credentials
+
+| Field | Value |
+|---|---|
+| **Email** | `admin@sakhi.com` |
+| **Password** | `Admin@123` |
+
+Override via compile-time flags:
+
+```bash
+--dart-define=ADMIN_EMAIL=your_admin@email.com
+--dart-define=ADMIN_PASSWORD=YourSecurePassword
+```
+
+### How it works
+
+1. Open the app on Web/Desktop → **Admin Login** panel appears
+2. Enter admin email & password → routes to `/admin`
+3. If the admin account doesn't exist in Firebase Auth, it's **auto-created** on first login
+4. A Firestore user profile with `role: admin` is created automatically
+
+### Admin capabilities
+
+| Feature | Description |
+|---|---|
+| **God-Mode Live Map** | All active users, volunteers, SOS markers — color-coded in real time |
+| **Live Alerts** | Active sessions & community broadcasts data tables |
+| **User Management** | View users, change roles (user ↔ volunteer ↔ admin) |
+| **KYC Verification** | Review volunteer ID submissions — approve or reject with zoomable document viewer |
 
 ---
 
@@ -107,210 +216,136 @@
 
 ```
 lib/
-├── main.dart                              # App entry + Firebase init
-├── firebase_options.dart                  # Firebase config (build-time env vars)
+├── main.dart                    # App entry + Firebase init
+├── firebase_options.dart        # Auto-generated Firebase config
 ├── config/
-│   ├── theme.dart                         # Material 3 light/dark themes
-│   ├── constants.dart                     # App-wide constants & Firestore collection names
-│   └── router.dart                        # GoRouter (19 routes)
+│   ├── constants.dart           # App-wide constants, collection names, feature flags
+│   ├── router.dart              # GoRouter (20+ routes)
+│   └── theme.dart               # Material 3 light/dark themes
 ├── models/
-│   ├── user_model.dart                    # User profile (roles, pins, KYC status)
-│   ├── session_model.dart                 # Safety session (status, timer, companion)
-│   ├── location_update.dart               # GPS coordinate update
-│   ├── emergency_contact.dart             # Emergency contact
-│   ├── broadcast_model.dart               # Community broadcast alert
-│   └── live_location_model.dart           # Real-time tracker (admin map)
+│   ├── user_model.dart          # User profile, roles, PIN hashes, KYC status
+│   ├── session_model.dart       # Safety session state machine
+│   ├── walking_session_model.dart # Walking buddy session
+│   ├── broadcast_model.dart     # Community safety alert
+│   ├── emergency_contact.dart   # Emergency contact
+│   ├── location_update.dart     # GPS coordinate update
+│   └── live_location_model.dart # Real-time tracker (admin map)
 ├── services/
-│   ├── auth_service.dart                  # Phone OTP + Email auth, retry-enabled profile check
-│   ├── firestore_service.dart             # All Firestore CRUD (users, sessions, broadcasts, etc.)
-│   ├── location_service.dart              # GPS tracking, live Firestore writes, permissions
-│   ├── notification_service.dart          # FCM push notifications
-│   ├── hardware_trigger_service.dart      # Volume-button SOS detection
-│   └── evidence_service.dart              # Covert audio recording + SHA-256 + upload
+│   ├── auth_service.dart        # Phone OTP + Email auth + admin override
+│   ├── firestore_service.dart   # All Firestore CRUD operations
+│   ├── location_service.dart    # GPS tracking + live Firestore writes
+│   ├── notification_service.dart # FCM push notifications
+│   ├── hardware_trigger_service.dart # Volume-button SOS detection
+│   ├── evidence_service.dart    # Covert audio recording + SHA-256 + upload
+│   ├── walking_buddy_service.dart # Walking buddy matching logic
+│   ├── walk_with_me_service.dart  # Background heartbeat service
+│   ├── camouflage_service.dart  # App icon disguise
+│   ├── sos_overlay_service.dart # Floating SOS overlay (Android)
+│   └── platform_helper.dart     # Web/desktop platform detection
 ├── providers/
-│   └── providers.dart                     # Riverpod providers + SessionController
+│   └── providers.dart           # Riverpod providers + SessionController
 ├── widgets/
-│   ├── sos_button.dart                    # Animated long-press SOS with pulse + progress ring
-│   ├── session_status_card.dart           # Color-coded session status card
-│   └── animated_gradient_bg.dart          # Animated gradient (splash screen)
+│   ├── sos_button.dart          # Animated long-press SOS with pulse ring
+│   ├── session_status_card.dart # Color-coded session status card
+│   └── animated_gradient_bg.dart # Gradient animation (splash)
 └── screens/
-    ├── splash_screen.dart                 # Animated splash + role-based routing
-    ├── auth/
-    │   ├── login_screen.dart              # Phone number login + demo skip
-    │   ├── otp_screen.dart                # 6-digit OTP verification
-    │   ├── email_login_screen.dart        # Email sign-in / sign-up
-    │   └── profile_setup_screen.dart      # Name + role selection
-    ├── home/
-    │   └── home_screen.dart               # Dashboard, quick actions, alerts feed
-    ├── session/
-    │   ├── active_session_screen.dart     # Live map + timer + SOS + duress PIN
-    │   └── volunteer_dashboard_screen.dart# Volunteer requests + availability
-    ├── broadcast/
-    │   └── broadcast_screen.dart          # Community alert form
-    ├── contacts/
-    │   └── emergency_contacts_screen.dart # Emergency contacts CRUD
-    ├── location/
-    │   └── location_sharing_screen.dart   # Time-bound location sharing
-    ├── notifications/
-    │   └── notifications_screen.dart      # Broadcast alert feed
-    ├── profile/
-    │   ├── profile_screen.dart            # User profile + settings
-    │   └── volunteer_verification_screen.dart # KYC ID upload
-    ├── safety_tools/
-    │   ├── fake_call_screen.dart          # Realistic fake call UI
-    │   ├── virtual_companion_setup.dart   # Walk With Me setup
-    │   ├── active_companion_screen.dart   # Countdown timer + auto-SOS
-    │   └── pin_setup_screen.dart          # Safe PIN + Duress PIN config
-    └── admin/
-        └── admin_dashboard_screen.dart    # Web-only: live map, alerts, user mgmt
+    ├── splash_screen.dart       # Animated splash + role-based routing
+    ├── auth/                    # Login, OTP, Email Login, Profile Setup
+    ├── home/                    # Home Dashboard with quick actions
+    ├── session/                 # Active Session, Volunteer Dashboard
+    ├── safety_tools/            # Fake Call, Virtual Companion, Walking Buddy,
+    │                            #   Heartbeat Timer, PIN Setup, Camouflage
+    ├── broadcast/               # Community Alert form
+    ├── contacts/                # Emergency Contacts CRUD
+    ├── location/                # Location Sharing
+    ├── notifications/           # Broadcast Feed
+    ├── profile/                 # Profile, Volunteer KYC Verification
+    └── admin/                   # Admin Dashboard (web/desktop only)
 ```
 
 ---
 
 ## Firestore Data Model
 
-| Collection                               | Key Fields                                                                                   |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `users`                                  | uid, name, phone, role, isAvailable, currentLocation, lastHeartbeat, safePinHash, duressPinHash, verificationStatus |
+| Collection | Purpose |
+|---|---|
+| `users` | Profile, role, availability, PIN hashes, KYC status, photo URL |
+| `users/{uid}/emergencyContacts` | Trusted emergency contacts |
+| `sessions` | Safety sessions — status, timer, volunteer matching, SOS state |
+| `sessions/{id}/locationUpdates` | GPS coordinate history for active sessions |
+| `broadcasts` | Community safety alerts (geo-located, 2 km radius) |
+| `locationShares` | Time-bound location sharing with auto-expiry |
+| `liveLocations` | Real-time tracker data for admin map |
+| `walkingSessions` | Walking Buddy — pickup, destination, handshake state machine |
+| `sessionEvidence` | Audio recordings + SHA-256 hashes *(feature-flagged)* |
 
-> **⚠️ PIN Storage**: `safePinHash` and `duressPinHash` must be stored as **cryptographic hashes only** (bcrypt, scrypt, or Argon2 — never SHA-256 alone). PINs must **never** be logged, transmitted, or stored in plaintext. Verification must compare a client-supplied PIN against the stored hash using the chosen hash library's verify function (server-side or client-side with secure transport). Any existing plaintext `safePin`/`duressPin` values must be migrated to hashed values immediately. Compromised PINs should be rotated by the user.
-| `users/{uid}/emergencyContacts`          | id, name, phone, relationship                                                               |
-| `sessions`                               | sessionId, createdBy, status, startTime, endTime, volunteerId, volunteerName, timeLimit, userLocation, destinationLocation, isVirtualCompanionActive |
-| `sessions/{id}/locationUpdates`          | uid, geoPoint, timestamp                                                                    |
-| `broadcasts`                             | id, uid, userName, message, alertType, location, timestamp, radiusKm, isDuressActive         |
-| `locationShares`                         | id, uid, userName, location, createdAt, expiresAt, durationMinutes, isActive                 |
-| `liveLocations`                          | uid, userName, role, latitude, longitude, lastUpdatedAt, isActive, trackingReason, sessionId, batteryLevel |
-| `session_evidence`                       | sessionId, downloadUrl, sha256Hash, recordedAt, uploadedAt                                   |
+---
 
-Security rules: [`firestore.rules`](firestore.rules) — role-based access; users update only their own data; volunteers modify only assigned sessions; admin has full access.
+## Security Rules
 
-Composite indexes: [`firestore.indexes.json`](firestore.indexes.json) — 5 indexes for session, broadcast, and location share queries.
+- **Users:** authenticated can read; owner creates; owner + admin can update
+- **Sessions:** authenticated can read; creator creates; creator/volunteer/admin update
+- **Broadcasts:** authenticated can read/create; admin can update/delete
+- **Location Shares:** owner CRUD; admin can update
+- **Walking Sessions:** participants + admin can read; KYC-verified volunteers required
 
-### Privacy & Data Governance
+Full rules → [`firestore.rules`](firestore.rules) · Indexes → [`firestore.indexes.json`](firestore.indexes.json)
 
-| Collection | Retention Policy | Notes |
+---
+
+## Platform Support
+
+| Platform | Scope |
+|---|---|
+| **Android** | Full app — all features including floating SOS overlay & camouflage icons |
+| **iOS** | Full app — all features except floating SOS overlay |
+| **Web** | Admin dashboard only |
+| **Windows / macOS / Linux** | Admin dashboard only |
+
+---
+
+## Environment Variables
+
+All passed via `--dart-define` at build/run time:
+
+| Variable | Default | Description |
 |---|---|---|
-| `users` | Retained until account deletion | Core profile data. `safePinHash`/`duressPinHash` are cryptographic hashes only. |
-| `users/{uid}/emergencyContacts` | Retained until user deletes contacts or account | User-managed CRUD. Deleted on account deletion. |
-| `sessions` | 90 days after session end | Completed sessions are eligible for automated cleanup via a scheduled Cloud Function. Active sessions are never pruned. |
-| `sessions/{id}/locationUpdates` | Same as parent session (90 days) | Purged when parent session document is deleted. |
-| `broadcasts` | 30 days after creation | Community alerts auto-expire. A Cloud Function with a TTL field (`expiresAt`) should delete stale documents. |
-| `locationShares` | Auto-deactivated on expiry; deleted after 7 days | `expiresAt` field drives automatic cleanup. |
-| `liveLocations` | Ephemeral — deactivated on session end | Documents are set to `isActive: false` on stop; a scheduled job should purge inactive entries older than 24 hours. |
-| `session_evidence` | 1 year (or per legal-hold requirements) | Audio recordings and hashes. Subject to legal retention. Firebase Storage files purged on the same schedule. |
-
-**User Right to Erasure / Account Deletion:**
-- Users may request full account deletion via the profile screen or by contacting the admin.
-- The deletion flow must remove: the `users/{uid}` document and all subcollections, all `sessions` created by the user, associated `locationUpdates`, `broadcasts`, `locationShares`, `liveLocations`, `session_evidence` records, and Firebase Storage files (KYC images, audio recordings).
-- Implement a Cloud Function (`deleteUserData`) triggered by Firebase Auth user deletion or an admin endpoint to cascade-delete all user-associated data.
-
-**Data Minimization & Automatic Cleanup:**
-- Add TTL fields (`expiresAt`) to `broadcasts`, `locationShares`, and `liveLocations`.
-- Deploy a scheduled Cloud Function (e.g., daily) to purge expired documents and associated Storage files.
-- Location history (`locationUpdates`) should be aggregated or deleted after the retention window.
-
-**Export & Portability:**
-- Users may request a data export (JSON) containing their profile, emergency contacts, session history, and broadcast history.
-- Implement an admin endpoint or Cloud Function (`exportUserData`) that collects and packages the user's data for download.
-
-**Mapping to Security Rules:**
-- `firestore.rules` enforces that users can only read/write their own data, volunteers can only modify assigned sessions, and admins have management access — aligning with data-access minimization requirements.
+| `ADMIN_EMAIL` | `admin@sakhi.com` | Admin login email (web/desktop) |
+| `ADMIN_PASSWORD` | `Admin@123` | Admin login password |
+| `GOOGLE_MAPS_API_KEY` | *(empty)* | Google Maps API key |
+| `EVIDENCE_VAULT_ENABLED` | `false` | Enable covert audio recording during SOS |
 
 ---
 
-## Getting Started
+## User Roles
 
-### Prerequisites
-- Flutter SDK (Dart `^3.11.0` — see `pubspec.yaml` environment.sdk)
-- Firebase project (Spark plan is sufficient for prototype)
-- Google Maps API key
-- Firebase CLI (for deploying rules & indexes)
+| Role | Access |
+|---|---|
+| **User** | All safety tools, sessions, community features, location sharing |
+| **Volunteer** | Volunteer dashboard, accept SOS & walking buddy requests (KYC required) |
+| **Admin** | Web dashboard, god-mode map, user management, role changes, KYC approval |
 
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/dhairyajangir/SAKHI.git
-   cd SAKHI
-   ```
-
-2. **Configure Firebase**
-   ```bash
-   flutterfire configure
-   ```
-
-3. **Create the Firestore database**
-   - Go to Firebase Console → Firestore Database → **Create database**
-   - Choose a region and start in **test mode**
-
-   > ⚠️ **Security Warning**: Test mode allows **unrestricted read/write access** to your entire Firestore database for 30 days. This is suitable only for initial development. **Deploy the project's security rules** (step 4 below) immediately after creating the database, and **switch to production mode** before any public or beta release to prevent unauthorized data access.
-
-4. **Deploy Firestore rules & indexes**
-   ```bash
-   firebase deploy --only firestore
-   ```
-
-5. **Add Google Maps API key**
-   - Android: replace `YOUR_API_KEY_HERE` in `android/app/src/main/AndroidManifest.xml`
-   - iOS: add key to `ios/Runner/AppDelegate.swift`
-
-6. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
-
-7. **Run the app**
-   ```bash
-   flutter run
-   ```
+**Verification flow:** Unverified → Pending → Verified / Rejected
 
 ---
 
-## Screens Overview (19 screens)
+## Screens Overview
 
-| Category       | Screens |
-| -------------- | ------- |
-| Auth           | Splash, Login (Phone), OTP, Email Login, Profile Setup |
-| Core           | Home Dashboard, Active Session, Volunteer Dashboard, Profile, Notifications |
-| Safety Tools   | Fake Call, Walk With Me Setup, Active Companion Timer, Duress PIN Setup |
-| Management     | Emergency Contacts, Location Sharing, Community Broadcast |
-| Admin          | Admin Dashboard (Web-only: Live Map, Alerts, User Management) |
-| Verification   | Volunteer KYC (ID Upload) |
-
----
-
-## Development Status
-
-| Feature                                                        | Status      |
-| -------------------------------------------------------------- | ----------- |
-| Phone OTP + Email Auth, Role-Based Routing                     | ✅ Complete |
-| Safety Sessions + Volunteer Matching + Live Tracking            | ⚠️ Complete (depends on battery optimization) |
-| Long-Press SOS + Community Broadcasts                          | ✅ Complete |
-| Hardware SOS (Volume Button Trigger)                           | ✅ Complete |
-| Fake Call with Realistic Dialer UI                             | ✅ Complete |
-| Virtual Companion (Walk With Me) with Auto-SOS                 | ✅ Complete |
-| Duress PIN (Anti-Coercion Protection)                          | ✅ Complete |
-| Evidence Vault (Covert Recording + SHA-256 + Cloud Upload)     | ⚠️ Complete (requires legal review before deployment) |
-| Time-Bound Location Sharing                                    | ⚠️ Complete (depends on battery optimization) |
-| Emergency Contacts CRUD                                        | ✅ Complete |
-| Volunteer KYC Verification (ID Upload)                         | ✅ Complete |
-| Admin Dashboard with God-Mode Map (Web)                        | ✅ Complete |
-| Firestore Security Rules + Composite Indexes                   | ✅ Complete |
-| Battery Optimization & Background Stability                    | � BLOCKER  |
-
-> **🚫 Battery Optimization (BLOCKER) — Tracking features are NOT production-complete until resolved:**
->
-> The following features depend on battery optimization being resolved: **Heartbeat every 30 seconds**, **location polling every 15s**, **Safety Sessions + Live Tracking**, and **Time-Bound Location Sharing**.
->
-> - **Heartbeat loop**: Currently fires every 30 s. **Implemented**: adaptive polling strategy with exponential backoff (30 s → 60 s → 120 s when stationary), immediate high-frequency when movement detected or geofence entered. Pending integration test validation.
-> - **Location polling**: Currently polls every 15 s via `startLocationUpdates`. **Implemented**: adaptive polling with `LocationService.adaptivePollingStrategy` — exponential backoff when stationary (speed < 0.5 m/s), longer intervals (30–60 s) when accuracy > 50 m, immediate 5 s interval when movement or geofence entry is detected.
-> - **Significant-change APIs**: Planned integration with iOS `CLLocationManager` significant-change monitoring and Android `FusedLocationProviderClient` `setPriority(PRIORITY_BALANCED_POWER_ACCURACY)` for background scenarios.
-> - **Geofencing**: Planned usage of `Geolocator`/platform geofencing for virtual companion arrival detection instead of continuous polling.
-> - **Background work**: Android uses foreground service with notification. **Planned**: integrate `WorkManager`/`JobScheduler` for deferred tasks (evidence upload retries, heartbeat keepalive) to survive OS process kills.
-> - **Real-time tracking**: Currently always-on during sessions. **Planned**: make opt-in and pauseable; suspend Firestore writes when the device is stationary (no movement detected for > 60 s).
+| Category | Screens |
+|---|---|
+| **Auth** | Splash, Phone Login, OTP Verification, Email Login, Profile Setup |
+| **Core** | Home Dashboard, Active Session, Volunteer Dashboard, Profile, Notifications |
+| **Safety Tools** | Fake Call, Virtual Companion, Walking Buddy, Heartbeat Timer, Duress PIN Setup, Camouflage |
+| **Management** | Emergency Contacts, Location Sharing, Community Broadcast |
+| **Admin** | Admin Dashboard (Live Map, Alerts, User Management, KYC Review) |
+| **Verification** | Volunteer KYC (ID Upload) |
 
 ---
 
 ## License
 
-This project is built for hackathon purposes.
+Built for hackathon purposes.
+
+---
+
+*SAKHI — सखी — Your Trusted Companion · Built with Flutter & Firebase*
