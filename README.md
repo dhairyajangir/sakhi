@@ -1,4 +1,16 @@
+
 # SAKHI — सखी — Your Trusted Companion
+
+
+
+<p align="center">
+  <a href="https://github.com/dhairyajangir/SAKHI/releases/download/v1.0.0/Sakhi.apk">
+    <img src="assets/images/sakhi-logo-3.png" alt="SAKHI Logo" width="180" />
+  </a>
+  <br/>
+</p>
+
+> Click the logo to download the APK
 
 > A cross-platform **women's safety app** built with **Flutter & Firebase** — real-time monitoring, volunteer assistance, covert SOS triggers, and anti-coercion safeguards.
 
